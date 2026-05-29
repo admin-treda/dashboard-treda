@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(viewer)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+enum Role {
+  admin
+  viewer
+}
+
+model Account {
+  id          String   @id @default(uuid())
+  name        String
+  provider    Provider
+  credentials String
+  status      Status   @default(active)
+  health      Health   @default(healthy)
+  region      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  events     Event[]
+  costs      Cost[]
+  costAlerts CostAlert[]
+
+  @@map("accounts")
+}
+
+enum Provider {
+  AWS
+  AZURE
+  M365
+}
+
+enum Status {
+  active
+  inactive
+  suspended
+}
+
+enum Health {
+  healthy
+  warning
+  critical
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  accountId   String   @map("account_id")
+  provider    Provider
+  type        String
+  severity    Severity
+  description String
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("events")
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Cost {
+  id        String   @id @default(uuid())
+  accountId String   @map("account_id")
+  service   String
+  amount    Decimal  @db.Decimal(18, 2)
+  currency  String   @default("USD")
+  period    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([period])
+  @@map("costs")
+}
+
+model CostAlert {
+  id          String   @id @default(uuid())
+  accountId   String   @map("account_id")
+  threshold   Decimal  @db.Decimal(18, 2)
+  currentCost Decimal  @map("current_cost") @db.Decimal(18, 2)
+  budget      Decimal  @db.Decimal(18, 2)
+  notified    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("cost_alerts")
+}
+
+model NotificationChannel {
+  id        String      @id @default(uuid())
+  type      ChannelType
+  name      String
+  config    Json        @default("{}")
+  enabled   Boolean     @default(true)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("notification_channels")
+}
+
+enum ChannelType {
+  SMTP
+  TELEGRAM
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  type        ReportType
+  status      ReportStatus @default(pending)
+  data        Json         @default("{}")
+  periodStart DateTime?    @map("period_start")
+  periodEnd   DateTime?    @map("period_end")
+  generatedAt DateTime     @default(now()) @map("generated_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+enum ReportType {
+  DAILY
+  WEEKLY
+}
+
+enum ReportStatus {
+  pending
+  generating
+  completed
+  failed
+}
+
+model News {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  url         String
+  source      String
+  category    String   @default("general")
+  publishedAt DateTime @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([publishedAt])
+  @@index([category])
+  @@map("news")
+}

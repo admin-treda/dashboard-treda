@@ -1,0 +1,161 @@
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
+import rateLimit from "@fastify/rate-limit";
+import { config } from "./config";
+import { setCollectResult, getCollectTime, getCollectResult } from "./services/collector-state";
+import { startPolling, collectAllAccounts } from "./services/collector";
+import { generateAndSendReport } from "./services/report";
+import { fetchAllNews, cleanupCriticalNews } from "./services/news";
+import { PrismaClient } from "@prisma/client";
+
+import authRoutes from "./routes/auth";
+import accountRoutes from "./routes/accounts";
+import eventRoutes from "./routes/events";
+import costRoutes from "./routes/costs";
+import notificationRoutes from "./routes/notifications";
+import newsRoutes from "./routes/news";
+import reportRoutes from "./routes/reports";
+import userRoutes from "./routes/users";
+import settingRoutes from "./routes/settings";
+
+export const prisma = new PrismaClient({
+  log: config.NODE_ENV === "development" ? ["query", "info", "warn", "error"] : ["error"],
+});
+
+const app = Fastify({
+  logger: {
+    level: config.NODE_ENV === "development" ? "debug" : "info",
+  },
+});
+
+async function main(): Promise<void> {
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+  });
+
+  await app.register(jwt, {
+    secret: config.JWT_SECRET,
+    sign: { expiresIn: "1d" },
+  });
+
+  await app.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+    },
+  });
+
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: "1 minute",
+  });
+
+  app.get("/health", async () => ({ status: "ok", time: new Date().toISOString() }));
+
+  await app.register(authRoutes, { prefix: "/api/v1/auth" });
+  await app.register(accountRoutes, { prefix: "/api/v1/accounts" });
+  await app.register(eventRoutes, { prefix: "/api/v1/events" });
+  await app.register(costRoutes, { prefix: "/api/v1/costs" });
+  await app.register(notificationRoutes, { prefix: "/api/v1/notifications" });
+  await app.register(newsRoutes, { prefix: "/api/v1/news" });
+  await app.register(reportRoutes, { prefix: "/api/v1/reports" });
+  await app.register(userRoutes, { prefix: "/api/v1/users" });
+  await app.register(settingRoutes, { prefix: "/api/v1/settings" });
+
+  
+// Seed all existing accounts on startup
+
+
+app.get("/api/v1/collect", async () => {
+  try {
+    lastCollectTime = new Date();
+    const result = await collectAllAccounts();
+    lastCollectResult = { accounts: result.accounts, events: result.totalEvents };
+    return { accounts_collected: result.accounts, new_events: result.totalEvents, collected_at: lastCollectTime.toISOString() };
+  } catch (e: any) {
+    setCollectResult({ error: e.message });
+    return { error: e.message };
+  }
+});
+  
+  app.get("/api/v1/poll-status", async () => {
+  return { 
+    status: "running", 
+    interval_minutes: 20,
+    last_run: getCollectTime()?.toISOString() || null,
+    last_result: getCollectResult()
+  };
+});
+
+app.setErrorHandler((error, _request, reply) => {
+    app.log.error(error);
+    reply.status(error.statusCode ?? 500).send({
+      error: error.message || "Internal Server Error",
+    });
+  });
+
+  try {
+    startPolling(20);
+
+  // Schedule daily report at midnight
+  const scheduleDailyReport = () => {
+    const now = new Date();
+    const night = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 5, 0);
+    const msToMidnight = night.getTime() - now.getTime();
+    setTimeout(async () => {
+      await generateAndSendReport('DAILY').catch(() => {});
+      scheduleDailyReport();
+  // Fetch news every 4 hours at 8 AM
+  const scheduleNewsFetch = () => {
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    setTimeout(async () => {
+      const count = await fetchAllNews().catch(() => 0);
+      console.log(`[News] Fetched ${count} new articles`);
+      scheduleNewsFetch();
+  
+  // Cleanup critical news older than 15 days (daily)
+  cleanupCriticalNews().catch(() => {});
+  setInterval(() => cleanupCriticalNews().catch(() => {}), 24 * 60 * 60 * 1000);
+    }, target.getTime() - now.getTime());
+  };
+  scheduleNewsFetch();
+  
+  // Cleanup critical news older than 15 days (daily)
+  cleanupCriticalNews().catch(() => {});
+  setInterval(() => cleanupCriticalNews().catch(() => {}), 24 * 60 * 60 * 1000); // Schedule again for next day
+    }, msToMidnight);
+  };
+  scheduleDailyReport();
+  // Fetch news every 4 hours at 8 AM
+  const scheduleNewsFetch = () => {
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    setTimeout(async () => {
+      const count = await fetchAllNews().catch(() => 0);
+      console.log(`[News] Fetched ${count} new articles`);
+      scheduleNewsFetch();
+  
+  // Cleanup critical news older than 15 days (daily)
+  cleanupCriticalNews().catch(() => {});
+  setInterval(() => cleanupCriticalNews().catch(() => {}), 24 * 60 * 60 * 1000);
+    }, target.getTime() - now.getTime());
+  };
+  scheduleNewsFetch();
+  
+  // Cleanup critical news older than 15 days (daily)
+  cleanupCriticalNews().catch(() => {});
+  setInterval(() => cleanupCriticalNews().catch(() => {}), 24 * 60 * 60 * 1000);
+    await app.listen({ port: config.PORT, host: config.HOST });
+    app.log.info(`Server listening on http://${config.HOST}:${config.PORT}`);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+}
+
+main();

@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hermes-allen-postgres
+    restart: unless-stopped
+    env_file:
+      - /home/admintreda/proyect_hermes/hermes-allen/.env
+    environment:
+      POSTGRES_USER: hermes
+      POSTGRES_PASSWORD: hermes123
+      POSTGRES_DB: hermes_allen
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hermes -d hermes_allen"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hermes-allen
+
+  redis:
+    image: redis:7-alpine
+    container_name: hermes-allen-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - hermes-allen
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  hermes-allen:
+    driver: bridge

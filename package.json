@@ -1,0 +1,16 @@
+{
+  "name": "hermes-allen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hermes Allen - Multi-Cloud Monitoring Dashboard",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
