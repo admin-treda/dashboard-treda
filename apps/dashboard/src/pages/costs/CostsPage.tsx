@@ -76,13 +76,8 @@ export function CostsPage() {
   useEffect(() => {
     const now = new Date()
     const currentPeriod = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-    // Initial load: try to get the most recent period with data
-    loadPeriod(currentPeriod).then(period => {
-      if (period !== currentPeriod) {
-        // If a better period was found, reload with it
-        loadPeriod(period)
-      }
-    })
+    setSelectedPeriod(currentPeriod)
+    loadPeriod(currentPeriod)
   }, [])
 
   const loadPeriod = async (period: string) => {
@@ -119,14 +114,15 @@ export function CostsPage() {
 
       if (s.totalByMonth && typeof s.totalByMonth === 'object') {
         const periods = Object.keys(s.totalByMonth).sort()
+        // Ensure current period is always in the list, even if no data yet
+        const now = new Date()
+        const currentPeriod = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+        if (!periods.includes(currentPeriod)) {
+          periods.push(currentPeriod)
+          periods.sort()
+        }
         setAvailablePeriods([...periods].reverse())
         setByMonth(s.totalByMonth as Record<string, number>)
-        if (s.total === 0 && periods.length > 0) {
-          // Current period has no data, return the best alternative
-          setSelectedPeriod(periods[periods.length - 1])
-          setLoading(false)
-          return periods[periods.length - 1]
-        }
       }
 
       setSelectedPeriod(period)
