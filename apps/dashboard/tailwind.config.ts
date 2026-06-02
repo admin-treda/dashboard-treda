@@ -49,14 +49,21 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        "primary-navy": "#21286C",
-        "accent-cyan": "#00F5B8",
-        "secondary-blue": "#5B78FF",
-        "soft-blue": "#E8F0FE",
+        /* Sentry-inspired custom palette */
+        "primary-navy": "#6a5fc1",
+        "accent-cyan": "#c2ef4e",
+        "secondary-blue": "#79628c",
+        "soft-blue": "#e8e0f0",
+        /* Severity colors */
         critical: "#EF4444",
         high: "#F59E0B",
-        medium: "#3B82F6",
+        medium: "#6a5fc1",
         low: "#10B981",
+        warning: "#F59E0B",
+      },
+      fontFamily: {
+        sans: ["Rubik", "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -76,11 +83,26 @@ const config: Config = {
           "0%": { backgroundPosition: "-1000px 0" },
           "100%": { backgroundPosition: "1000px 0" },
         },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-in": {
+          "0%": { opacity: "0", transform: "translateX(-10px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "pulse-soft": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.7" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite linear",
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-in": "slide-in 0.2s ease-out",
+        "pulse-soft": "pulse-soft 2s ease-in-out infinite",
       },
     },
   },

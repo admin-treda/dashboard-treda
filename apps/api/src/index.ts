@@ -38,7 +38,7 @@ async function main(): Promise<void> {
 
   await app.register(jwt, {
     secret: config.JWT_SECRET,
-    sign: { expiresIn: "1d" },
+    sign: { expiresIn: "7d" },
   });
 
   await app.register(multipart, {
@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   });
 
   await app.register(rateLimit, {
-    max: 100,
+    max: 300,
     timeWindow: "1 minute",
   });
 

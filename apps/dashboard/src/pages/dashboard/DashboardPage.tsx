@@ -36,16 +36,20 @@ const chartColors = ['#21286C', '#5B78FF', '#00F5B8', '#F59E0B', '#EF4444', '#3B
 
 function SummaryCard({ title, value, subtitle, icon: Icon, loading }: any) {
   return (
-    <Card className="glass-card hover:shadow-xl transition-all duration-300 group">
+    <Card className="glass-card card-hover group">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">{title}</p>
-            {loading ? <Skeleton className="h-7 w-20" /> : <h3 className="text-xl font-bold">{value}</h3>}
-            {!loading && subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+            <p className="text-xs text-muted-foreground tracking-wide">{title}</p>
+            {loading ? (
+              <div className="h-7 w-20 rounded skeleton" />
+            ) : (
+              <h3 className="text-xl font-bold tracking-tight">{value}</h3>
+            )}
+            {!loading && subtitle && <p className="text-xs text-muted-foreground/80">{subtitle}</p>}
           </div>
-          <div className="rounded-xl bg-primary/10 p-2.5 group-hover:bg-primary/20 transition-colors">
-            <Icon className="h-4 w-4 text-primary" />
+          <div className="rounded-xl bg-primary/10 p-2.5 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+            <Icon className="h-4 w-4 text-accent-cyan" />
           </div>
         </div>
       </CardContent>
@@ -90,7 +94,10 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gradient">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gradient">Dashboard</h1>
+        {loading && <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="spinner" /> Cargando datos...</div>}
+      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">

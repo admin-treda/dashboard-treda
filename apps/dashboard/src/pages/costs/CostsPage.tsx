@@ -38,7 +38,7 @@ import {
 } from 'recharts'
 
 const COLORS = ['#21286C', '#5B78FF', '#00F5B8', '#F59E0B', '#EF4444', '#3B82F6', '#10B981']
-const PERIOD_LABELS: Record<string, string> = { '2026-03': 'Marzo 2026', '2026-04': 'Abril 2026', '2026-05': 'Mayo 2026' }
+const PERIOD_LABELS: Record<string, string> = { '2026-03': 'Marzo 2026', '2026-04': 'Abril 2026', '2026-05': 'Mayo 2026', '2026-06': 'Junio 2026' }
 
 export function CostsPage() {
   const [loading, setLoading] = useState(true)
@@ -55,14 +55,20 @@ export function CostsPage() {
 
   useEffect(() => {
     const now = new Date()
-    setSelectedPeriod(now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'))
+    const currentPeriod = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+    // Initial load: try to get the most recent period with data
+    loadPeriod(currentPeriod).then(period => {
+      if (period !== currentPeriod) {
+        // If a better period was found, reload with it
+        loadPeriod(period)
+      }
+    })
   }, [])
 
-  const fetchData = async (period?: string) => {
+  const loadPeriod = async (period: string) => {
     try {
       setLoading(true)
-      const params = period ? `?period=${period}` : ''
-      const res = await api.get('/costs' + params)
+      const res = await api.get('/costs' + `?period=${period}`)
       const body = res.data || {}
       const s = body.summary || {}
 
@@ -92,28 +98,35 @@ export function CostsPage() {
       setByAccountService(byAccountService)
 
       if (s.totalByMonth && typeof s.totalByMonth === 'object') {
-        setAvailablePeriods(Object.keys(s.totalByMonth).sort().reverse())
+        const periods = Object.keys(s.totalByMonth).sort()
+        setAvailablePeriods([...periods].reverse())
         setByMonth(s.totalByMonth as Record<string, number>)
+        if (s.total === 0 && periods.length > 0) {
+          // Current period has no data, return the best alternative
+          setSelectedPeriod(periods[periods.length - 1])
+          setLoading(false)
+          return periods[periods.length - 1]
+        }
       }
+
+      setSelectedPeriod(period)
 
       if (body.alerts && body.alerts.length > 0) {
         const a = body.alerts[0]
-        setAlert({
-          budgetLimit: Number(a.budget),
-          currentCost: Number(a.currentCost),
-          percentUsed: Number(a.currentCost) / Number(a.budget) * 100,
-        })
+        setAlert({ budgetLimit: Number(a.budget), currentCost: Number(a.currentCost), percentUsed: Number(a.currentCost) / Number(a.budget) * 100 })
         setBudgetLimit(Number(a.budget))
       }
-    } catch (err: any) {
-      toast.error('Error al cargar costos')
-    } finally {
       setLoading(false)
+      return period
+    } catch {
+      toast.error('Error al cargar costos')
+      setLoading(false)
+      return period
     }
   }
 
   useEffect(() => {
-    if (selectedPeriod) fetchData(selectedPeriod)
+    if (selectedPeriod) loadPeriod(selectedPeriod)
   }, [selectedPeriod])
 
   const sortedAccounts = [...byAccount].sort((a, b) => b.value - a.value)

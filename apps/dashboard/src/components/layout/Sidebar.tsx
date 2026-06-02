@@ -51,8 +51,8 @@ export function Sidebar() {
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-primary/15 text-accent-cyan shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                   )}
                   title={sidebarCollapsed ? item.label : undefined}
                 >

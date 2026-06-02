@@ -35,17 +35,17 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-soft-blue dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+    <div className="min-h-screen flex items-center justify-center login-bg bg-gradient-to-br from-slate-50 via-white to-soft-blue dark:from-slate-950 dark:via-[#150f23] dark:to-[#1f1633] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="h-16 w-16 rounded-2xl gradient-brand mx-auto flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
+          <div className="h-16 w-16 rounded-2xl gradient-brand mx-auto flex items-center justify-center shadow-lg shadow-primary/20 mb-4 glow-purple">
             <Shield className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gradient">Dashboard Treda</h1>
           <p className="text-muted-foreground mt-2">Dashboard Unificado Multi-Cloud</p>
         </div>
 
-        <Card className="glass-card">
+        <Card className="gradient-border">
           <CardHeader>
             <CardTitle>Iniciar Sesión</CardTitle>
             <CardDescription>Ingresa tus credenciales para continuar</CardDescription>

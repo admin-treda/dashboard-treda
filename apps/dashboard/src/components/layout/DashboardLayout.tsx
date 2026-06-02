@@ -40,8 +40,11 @@ export function DashboardLayout() {
         <div className="fixed bottom-0 right-0 left-0 z-40 border-t bg-background/80 backdrop-blur-sm"
           style={{ marginLeft: sidebarCollapsed ? '4rem' : '16rem' }}>
           <div className="flex items-center justify-between px-6 py-1.5 text-xs text-muted-foreground">
-            <span>Dashboard Treda — Dashboard Multi-Cloud</span>
-            <span>
+            <span className="flex items-center gap-2">
+              <span className="status-dot active" />
+              Dashboard Treda — Dashboard Multi-Cloud
+            </span>
+            <span className="flex items-center gap-1.5">
               {lastUpdated
                 ? `Última recolección: ${new Date(lastUpdated).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`
                 : 'Recolector automático cada 20 minutos'}
