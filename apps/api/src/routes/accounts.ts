@@ -4,6 +4,7 @@ import { prisma } from "../index";
 import { collectAllAccounts } from "../services/collector";
 import { requireRole } from "../middleware/auth";
 import { validateBody, validateParams } from "../middleware/validate";
+import { encrypt, decrypt } from "../services/encryption";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -39,10 +40,22 @@ export default async function accountRoutes(fastify: FastifyInstance): Promise<v
       lastEventMap[row.account_id] = row.created_at;
     }
 
-    const result = accounts.map((acc) => ({
-      ...acc,
-      lastActivity: lastEventMap[acc.id] || null,
-    }));
+    const result = accounts.map((acc) => {
+      let hasCredentials = false;
+      try {
+        const raw = acc.credentials as string;
+        if (raw) {
+          decrypt(raw);
+          hasCredentials = true;
+        }
+      } catch {}
+      return {
+        ...acc,
+        credentials: undefined,
+        hasCredentials,
+        lastActivity: lastEventMap[acc.id] || null,
+      };
+    });
 
     return { accounts: result };
   });
@@ -51,7 +64,15 @@ export default async function accountRoutes(fastify: FastifyInstance): Promise<v
     const { id } = request.params as z.infer<typeof paramsSchema>;
     const account = await prisma.account.findUnique({ where: { id } });
     if (!account) return reply.status(404).send({ error: "Account not found" });
-    return { account };
+    let hasCredentials = false;
+    try {
+      const raw = account.credentials as string;
+      if (raw) {
+        decrypt(raw);
+        hasCredentials = true;
+      }
+    } catch {}
+    return { account: { ...account, credentials: undefined, hasCredentials } };
   });
 
   fastify.post("/", { preHandler: [requireRole("admin"), validateBody(createSchema)] }, async (request, reply) => {
@@ -59,10 +80,10 @@ export default async function accountRoutes(fastify: FastifyInstance): Promise<v
     const account = await prisma.account.create({
       data: {
         ...body,
-        credentials: JSON.stringify(body.credentials),
+        credentials: encrypt(JSON.stringify(body.credentials)),
       },
     });
-    return reply.status(201).send({ account });
+    return reply.status(201).send({ account: { ...account, credentials: undefined, hasCredentials: true } });
   });
 
   fastify.patch("/:id", { preHandler: [requireRole("admin"), validateParams(paramsSchema), validateBody(updateSchema)] }, async (request, reply) => {
@@ -70,10 +91,18 @@ export default async function accountRoutes(fastify: FastifyInstance): Promise<v
     const body = request.body as z.infer<typeof updateSchema>;
     const data: Record<string, unknown> = { ...body };
     if (body.credentials) {
-      data.credentials = JSON.stringify(body.credentials);
+      data.credentials = encrypt(JSON.stringify(body.credentials));
     }
     const account = await prisma.account.update({ where: { id }, data });
-    return { account };
+    let hasCredentials = false;
+    try {
+      const raw = account.credentials as string;
+      if (raw) {
+        decrypt(raw);
+        hasCredentials = true;
+      }
+    } catch {}
+    return { account: { ...account, credentials: undefined, hasCredentials } };
   });
 
   fastify.delete("/:id", { preHandler: [requireRole("admin"), validateParams(paramsSchema)] }, async (request, reply) => {

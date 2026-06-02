@@ -25,10 +25,17 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
 export function requireRole(...allowedRoles: Array<"admin" | "viewer">) {
   return async function (request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    await authenticate(request, reply);
+    try {
+      await request.jwtVerify();
+      request.user = request.user as JwtPayload;
+    } catch {
+      reply.status(401).send({ error: "Unauthorized" });
+      return;
+    }
     const user = request.user;
     if (!user || !allowedRoles.includes(user.role)) {
       reply.status(403).send({ error: "Forbidden" });
+      return;
     }
   };
 }

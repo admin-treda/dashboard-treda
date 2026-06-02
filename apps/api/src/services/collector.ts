@@ -2,13 +2,20 @@ import { prisma } from '../index';
 import { classifyEvent } from './rules';
 import { dispatchNotifications, dispatchCostAlert } from './notifier';
 import { setCollectResult } from './collector-state';
+import { decrypt } from './encryption';
 
 // ─── AWS ──────────────────────────────────────────────────────────
 import { CloudTrailClient, LookupEventsCommand } from '@aws-sdk/client-cloudtrail';
 import { CostExplorerClient, GetCostAndUsageCommand } from '@aws-sdk/client-cost-explorer';
 
 async function collectAWS(account: { id: string; credentials: any; region?: string }): Promise<{ events: number }> {
-  const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+  const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
+  let creds: any;
+  try {
+    creds = JSON.parse(decrypt(credsRaw));
+  } catch {
+    creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+  }
   const region = account.region || 'us-east-1';
   let events = 0;
   const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
@@ -91,7 +98,13 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
 
 // ─── AWS Cost Collection (separada del polling de eventos) ──────
 async function collectCostsForAccount(account: { id: string; credentials: any; region?: string }): Promise<{ services: number; error?: string }> {
-  const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+  const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
+  let creds: any;
+  try {
+    creds = JSON.parse(decrypt(credsRaw));
+  } catch {
+    creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+  }
   const region = account.region || 'us-east-1';
   let services = 0;
 
@@ -170,7 +183,13 @@ async function collectAzure(account: { id: string; credentials: any }): Promise<
   let events = 0;
   const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
   try {
-    const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+    const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
+    let creds: any;
+    try {
+      creds = JSON.parse(decrypt(credsRaw));
+    } catch {
+      creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+    }
     const { tenantId, clientId, clientSecret, subscriptionId } = creds;
 
     if (!tenantId || !clientId || !clientSecret || !subscriptionId) return { events: 0 };
@@ -257,7 +276,13 @@ async function collectM365(account: { id: string; credentials: any }): Promise<{
   let events = 0;
   const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
   try {
-    const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+    const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
+    let creds: any;
+    try {
+      creds = JSON.parse(decrypt(credsRaw));
+    } catch {
+      creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+    }
     const { tenantId, clientId, clientSecret } = creds;
     if (!tenantId || !clientId || !clientSecret) return { events: 0 };
 
