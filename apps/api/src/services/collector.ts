@@ -7,7 +7,7 @@ import { setCollectResult } from './collector-state';
 import { CloudTrailClient, LookupEventsCommand } from '@aws-sdk/client-cloudtrail';
 import { CostExplorerClient, GetCostAndUsageCommand } from '@aws-sdk/client-cost-explorer';
 
-async function collectAWS(account: { id: string; credentials: any; region?: string }): Promise<{ events: number; costs: boolean }> {
+async function collectAWS(account: { id: string; credentials: any; region?: string }): Promise<{ events: number }> {
   const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
   const region = account.region || 'us-east-1';
   let events = 0;
@@ -85,7 +85,16 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
     }
   }
 
-  // ── AWS Cost Explorer ──
+  await prisma.account.update({ where: { id: account.id }, data: { health: 'healthy', status: 'connected' } });
+  return { events };
+}
+
+// ─── AWS Cost Collection (separada del polling de eventos) ──────
+async function collectCostsForAccount(account: { id: string; credentials: any; region?: string }): Promise<{ services: number; error?: string }> {
+  const creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+  const region = account.region || 'us-east-1';
+  let services = 0;
+
   try {
     const ce = new CostExplorerClient({
       region,
@@ -117,9 +126,11 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
             await prisma.$executeRawUnsafe(
               `INSERT INTO costs (id, account_id, service, amount, currency, period, created_at)
                VALUES (gen_random_uuid(), $1, $2, $3::numeric, 'USD', $4, NOW())
-               ON CONFLICT (account_id, service, period) DO NOTHING`,
+               ON CONFLICT (account_id, service, period)
+               DO UPDATE SET amount = EXCLUDED.amount, created_at = NOW()`,
               account.id, service, parseFloat(amount.toFixed(2)), period.TimePeriod?.Start?.slice(0, 7) || ''
             );
+            services++;
           }
         }
       }
@@ -127,11 +138,31 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
   } catch (err: any) {
     if (!err.message?.includes('AccessDenied')) {
       console.error(`AWS Cost Explorer error for ${account.id}:`, err.message);
+      return { services, error: err.message };
     }
   }
 
-  await prisma.account.update({ where: { id: account.id }, data: { health: 'healthy', status: 'connected' } });
-  return { events, costs: true, createdEvents };
+  return { services };
+}
+
+export async function collectAllCosts(): Promise<{ accounts: number; categories: number }> {
+  const accounts = await prisma.account.findMany({ where: { status: 'active', provider: 'AWS' } });
+  let totalCategories = 0;
+
+  for (const account of accounts) {
+    try {
+      const result = await collectCostsForAccount(account);
+      totalCategories += result.services;
+      if (result.error) {
+        console.error(`[CostCollector] Error for ${account.id}:`, result.error);
+      }
+    } catch (err: any) {
+      console.error(`[CostCollector] Fatal for ${account.id}:`, err.message);
+    }
+  }
+
+  console.log(`[CostCollector] Collected costs from ${accounts.length} AWS accounts, ${totalCategories} service categories`);
+  return { accounts: accounts.length, categories: totalCategories };
 }
 
 // ─── Azure ──────────────────────────────────────────────────────────

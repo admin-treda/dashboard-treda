@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../index";
 import { requireRole } from "../middleware/auth";
+import { collectAllCosts } from "../services/collector";
 
 export default async function (fastify: FastifyInstance) {
   fastify.get("/", { preHandler: requireRole("admin", "viewer") }, async (request) => {
@@ -56,5 +57,20 @@ export default async function (fastify: FastifyInstance) {
         currentPeriod: targetPeriod,
       },
     };
+  });
+
+  // POST /api/v1/costs/refresh — actualiza costos manualmente (solo una vez al día desde AWS Cost Explorer)
+  fastify.post("/refresh", { preHandler: requireRole("admin") }, async () => {
+    try {
+      const result = await collectAllCosts();
+      return {
+        success: true,
+        message: `Costos actualizados: ${result.accounts} cuentas, ${result.categories} categorías`,
+        accounts: result.accounts,
+        categories: result.categories,
+      };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
   });
 }

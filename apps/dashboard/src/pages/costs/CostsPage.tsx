@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { DollarSign, Server, AlertTriangle, PiggyBank, Calendar, ChevronDown, ChevronRight } from 'lucide-react'
+import { DollarSign, Server, AlertTriangle, PiggyBank, Calendar, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -52,6 +52,26 @@ export function CostsPage() {
   const [availablePeriods, setAvailablePeriods] = useState<string[]>([])
   const [byMonth, setByMonth] = useState<Record<string, number>>({})
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      const res = await api.post('/costs/refresh')
+      const data = res.data || {}
+      if (data.success) {
+        toast.success(data.message || 'Costos actualizados')
+        // Reload the current period after refresh
+        if (selectedPeriod) loadPeriod(selectedPeriod)
+      } else {
+        toast.error(data.error || 'Error al actualizar costos')
+      }
+    } catch {
+      toast.error('Error al conectar con el servidor')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     const now = new Date()
@@ -151,6 +171,16 @@ export function CostsPage() {
           <p className="text-sm text-muted-foreground mt-1">Análisis de gastos por período</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </Button>
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-44 bg-muted/50">

@@ -5,7 +5,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { config } from "./config";
 import { setCollectResult, getCollectTime, getCollectResult } from "./services/collector-state";
-import { startPolling, collectAllAccounts } from "./services/collector";
+import { startPolling, collectAllAccounts, collectAllCosts } from "./services/collector";
 import { generateAndSendReport } from "./services/report";
 import { fetchAllNews, cleanupCriticalNews } from "./services/news";
 import { PrismaClient } from "@prisma/client";
@@ -98,6 +98,27 @@ app.setErrorHandler((error, _request, reply) => {
 
   try {
     startPolling(20);
+
+  // Schedule daily cost refresh at 7 AM Colombia (12:00 UTC)
+  const scheduleDailyCostCollection = () => {
+    const now = new Date();
+    // Colombia is UTC-5, so 7 AM COT = 12:00 UTC
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const msUntilTarget = target.getTime() - now.getTime();
+    setTimeout(async () => {
+      console.log('[CostCollector] Running daily cost collection (7 AM Colombia time)');
+      try {
+        const result = await collectAllCosts();
+        console.log(`[CostCollector] Daily collection done: ${result.accounts} accounts, ${result.categories} categories`);
+      } catch (err: any) {
+        console.error('[CostCollector] Daily collection error:', err.message);
+      }
+      // Schedule next day
+      scheduleDailyCostCollection();
+    }, msUntilTarget);
+  };
+  scheduleDailyCostCollection();
 
   // Schedule daily report at midnight
   const scheduleDailyReport = () => {
