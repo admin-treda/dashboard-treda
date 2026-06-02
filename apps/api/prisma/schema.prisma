@@ -95,6 +95,7 @@ model Cost {
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@unique([accountId, service, period], name: "idx_costs_unique")
   @@index([accountId])
   @@index([period])
   @@map("costs")
