@@ -37,7 +37,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
-const COLORS = ['#21286C', '#5B78FF', '#00F5B8', '#F59E0B', '#EF4444', '#3B82F6', '#10B981']
+const COLORS = ['#00FFFF', '#FF0080', '#BF00FF', '#FFFF00', '#FF0040', '#C9A84C', '#00E5FF']
 const PERIOD_LABELS: Record<string, string> = { '2026-03': 'Marzo 2026', '2026-04': 'Abril 2026', '2026-05': 'Mayo 2026', '2026-06': 'Junio 2026' }
 
 export function CostsPage() {
@@ -295,7 +295,7 @@ export function CostsPage() {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
                   <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
-                  <Bar dataKey="total" fill="#5B78FF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" fill="#00FFFF" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               {availablePeriods.length >= 2 && (

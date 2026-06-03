@@ -11,6 +11,7 @@ import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { NoticiasPage } from '@/pages/news/NoticiasPage'
+import { PentestPage } from '@/pages/pentest/PentestPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -44,6 +45,7 @@ function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
             <Route path="noticias" element={<NoticiasPage />} />
+            <Route path="pentest" element={<PentestPage />} />
       </Route>
     </Routes>
   )

@@ -4,6 +4,7 @@ import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { config } from "./config";
+import { authenticate } from "./middleware/auth";
 import { setCollectResult, getCollectTime, getCollectResult } from "./services/collector-state";
 import { startPolling, collectAllAccounts, collectAllCosts } from "./services/collector";
 import { generateAndSendReport } from "./services/report";
@@ -19,6 +20,7 @@ import newsRoutes from "./routes/news";
 import reportRoutes from "./routes/reports";
 import userRoutes from "./routes/users";
 import settingRoutes from "./routes/settings";
+import pentestRoutes from "./routes/pentest";
 
 export const prisma = new PrismaClient({
   log: config.NODE_ENV === "development" ? ["query", "info", "warn", "error"] : ["error"],
@@ -38,7 +40,7 @@ async function main(): Promise<void> {
 
   await app.register(jwt, {
     secret: config.JWT_SECRET,
-    sign: { expiresIn: "7d" },
+    sign: { expiresIn: config.JWT_EXPIRES_IN },
   });
 
   await app.register(multipart, {
@@ -52,6 +54,16 @@ async function main(): Promise<void> {
     timeWindow: "1 minute",
   });
 
+  // Custom JSON parser to sanitize parse errors (H1 fix)
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (req, body, done) => {
+    try {
+      const json = JSON.parse(body as string);
+      done(null, json);
+    } catch (err) {
+      done(new Error("Invalid JSON"), undefined);
+    }
+  });
+
   app.get("/health", async () => ({ status: "ok", time: new Date().toISOString() }));
 
   await app.register(authRoutes, { prefix: "/api/v1/auth" });
@@ -63,12 +75,13 @@ async function main(): Promise<void> {
   await app.register(reportRoutes, { prefix: "/api/v1/reports" });
   await app.register(userRoutes, { prefix: "/api/v1/users" });
   await app.register(settingRoutes, { prefix: "/api/v1/settings" });
+  await app.register(pentestRoutes, { prefix: "/api/v1/pentest" });
 
   
 // Seed all existing accounts on startup
 
 
-app.get("/api/v1/collect", async () => {
+app.get("/api/v1/collect", { preHandler: [authenticate] }, async () => {
   try {
     lastCollectTime = new Date();
     const result = await collectAllAccounts();
@@ -80,7 +93,7 @@ app.get("/api/v1/collect", async () => {
   }
 });
   
-  app.get("/api/v1/poll-status", async () => {
+  app.get("/api/v1/poll-status", { preHandler: [authenticate] }, async () => {
   return { 
     status: "running", 
     interval_minutes: 20,
@@ -89,11 +102,28 @@ app.get("/api/v1/collect", async () => {
   };
 });
 
-app.setErrorHandler((error, _request, reply) => {
+app.setNotFoundHandler((request, reply) => {
+    reply.status(404).send({ error: "Not Found" });
+  });
+
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("X-XSS-Protection", "1; mode=block");
+  });
+
+  app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
-    reply.status(error.statusCode ?? 500).send({
-      error: error.message || "Internal Server Error",
-    });
+    const statusCode = error.statusCode ?? 500;
+    let message = "Internal Server Error";
+    if (config.NODE_ENV !== "production") {
+      message = error.message || message;
+    }
+    const response: Record<string, unknown> = { error: message };
+    if (config.NODE_ENV !== "production") {
+      response.stack = error.stack;
+    }
+    reply.status(statusCode).send(response);
   });
 
   try {

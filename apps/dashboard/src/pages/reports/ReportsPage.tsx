@@ -301,7 +301,7 @@ export function ReportsPage() {
           {viewLoading ? (
             <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
           ) : (
-            <div className="text-sm" dangerouslySetInnerHTML={{ __html: viewContent }} />
+            <pre className="text-sm whitespace-pre-wrap font-mono bg-muted/50 rounded-lg p-4 overflow-x-auto max-h-[60vh] overflow-y-auto">{viewContent}</pre>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setViewReport(null)}>Cerrar</Button>

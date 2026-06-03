@@ -22,21 +22,72 @@ const requireAuth = async (request: any, reply: any) => {
   }
 };
 
+// Account lockout: track failed attempts per username
+const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+function isLocked(username: string): boolean {
+  const record = failedAttempts.get(username.toLowerCase());
+  if (!record) return false;
+  // Only check lockout expiry if lockout is active (lockedUntil > 0)
+  if (record.lockedUntil > 0) {
+    if (Date.now() > record.lockedUntil) {
+      failedAttempts.delete(username.toLowerCase());
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function recordFailedAttempt(username: string): void {
+  const key = username.toLowerCase();
+  const record = failedAttempts.get(key);
+  if (record) {
+    record.count++;
+    if (record.count >= MAX_FAILED_ATTEMPTS) {
+      record.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    }
+  } else {
+    failedAttempts.set(key, { count: 1, lockedUntil: 0 });
+  }
+}
+
+function clearFailedAttempts(username: string): void {
+  failedAttempts.delete(username.toLowerCase());
+}
+
 export default async function (fastify: FastifyInstance) {
-  fastify.post("/login", { preHandler: validateBody(loginSchema) }, async (request, reply) => {
+  fastify.post("/login", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    preHandler: validateBody(loginSchema),
+  }, async (request, reply) => {
     const { username, password } = request.body as z.infer<typeof loginSchema>;
+
+    // Check account lockout
+    if (isLocked(username)) {
+      return reply.status(423).send({
+        error: "Cuenta bloqueada temporalmente. Intente de nuevo en 15 minutos.",
+      });
+    }
 
     const user = await prisma.user.findFirst({
       where: { OR: [{ username }, { email: username }] },
     });
     if (!user) {
+      recordFailedAttempt(username);
       return reply.status(401).send({ error: "Credenciales inválidas" });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
+      recordFailedAttempt(username);
       return reply.status(401).send({ error: "Credenciales inválidas" });
     }
+
+    // Success — clear failed attempts
+    clearFailedAttempts(username);
 
     const token = fastify.jwt.sign({
       userId: user.id,

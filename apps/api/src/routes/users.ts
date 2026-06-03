@@ -8,6 +8,7 @@ import { validateBody, validateParams } from "../middleware/validate";
 const createSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  username: z.string().min(3),
   password: z.string().min(6),
   role: z.enum(["admin", "viewer"]).default("viewer"),
 });
@@ -44,13 +45,18 @@ export default async function userRoutes(fastify: FastifyInstance): Promise<void
 
   fastify.post("/", { preHandler: [requireRole("admin"), validateBody(createSchema)] }, async (request, reply) => {
     const body = request.body as z.infer<typeof createSchema>;
-    const exists = await prisma.user.findUnique({ where: { email: body.email } });
-    if (exists) return reply.status(409).send({ error: "Email already in use" });
+    const exists = await prisma.user.findFirst({
+      where: { OR: [{ email: body.email }, { username: body.username }] },
+    });
+    if (exists) {
+      const field = exists.email === body.email ? 'Email' : 'Username';
+      return reply.status(409).send({ error: `${field} already in use` });
+    }
 
     const hash = await bcrypt.hash(body.password, 12);
     const user = await prisma.user.create({
-      data: { name: body.name, email: body.email, password: hash, role: body.role },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      data: { name: body.name, email: body.email, username: body.username, password: hash, role: body.role },
+      select: { id: true, name: true, email: true, username: true, role: true, createdAt: true },
     });
     return reply.status(201).send({ user });
   });

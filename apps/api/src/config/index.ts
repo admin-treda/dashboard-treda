@@ -9,6 +9,7 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
+  JWT_EXPIRES_IN: z.string().default("2h"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),

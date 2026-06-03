@@ -11,7 +11,7 @@ export default defineConfig({
   },
   preview: {
     headers: {
-      'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:3000; frame-ancestors 'none';",
+      'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:3000; frame-ancestors 'none';",
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
