@@ -12,6 +12,7 @@ import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { NoticiasPage } from '@/pages/news/NoticiasPage'
 import { PentestPage } from '@/pages/pentest/PentestPage'
+import { HonchoPage } from '@/pages/honcho/HonchoPage'
 import { PermissionsProvider } from '@/lib/permissions'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ function App() {
         <Route path="settings" element={<SettingsPage />} />
             <Route path="noticias" element={<NoticiasPage />} />
             <Route path="pentest" element={<PentestPage />} />
+            <Route path="honcho" element={<HonchoPage />} />
       </Route>
     </Routes>
   )

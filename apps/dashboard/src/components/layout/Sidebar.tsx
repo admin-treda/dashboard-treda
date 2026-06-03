@@ -12,6 +12,7 @@ import {
   FileText,
   Settings,
   Shield,
+  Brain,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ export function Sidebar() {
     { path: '/noticias', label: 'Noticias', icon: Globe, show: perms.canViewDashboard },
     { path: '/reports', label: 'Informes', icon: FileText, show: perms.canViewReports },
     { path: '/settings', label: 'Configuración', icon: Settings, show: perms.canManageUsers || perms.canConfig },
+    { path: '/honcho', label: 'Honcho', icon: Brain, show: true },
   ].filter(item => item.show)
 
   return (

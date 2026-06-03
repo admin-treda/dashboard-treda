@@ -1,0 +1,7 @@
+# Dashboard Treda Pentest Scope
+localhost
+127.0.0.1
+# Puertos
+127.0.0.1:3000
+127.0.0.1:5173
+127.0.0.1:5432

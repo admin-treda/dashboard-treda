@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { HonchoWidget } from '@/components/honcho/HonchoWidget'
 import { useThemeStore } from '@/store/themeStore'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -59,6 +60,9 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      {/* Honcho floating widget */}
+      <HonchoWidget />
     </div>
   )
 }

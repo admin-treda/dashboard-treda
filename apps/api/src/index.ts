@@ -22,6 +22,7 @@ import reportRoutes from "./routes/reports";
 import userRoutes from "./routes/users";
 import settingRoutes from "./routes/settings";
 import pentestRoutes from "./routes/pentest";
+import honchoRoutes from "./routes/honcho";
 
 export const prisma = new PrismaClient({
   log: config.NODE_ENV === "development" ? ["query", "info", "warn", "error"] : ["error"],
@@ -78,6 +79,7 @@ async function main(): Promise<void> {
   await app.register(userRoutes, { prefix: "/api/v1/users" });
   await app.register(settingRoutes, { prefix: "/api/v1/settings" });
   await app.register(pentestRoutes, { prefix: "/api/v1/pentest" });
+  await app.register(honchoRoutes, { prefix: "/api/v1/honcho" });
 
   
 // Seed all existing accounts on startup
