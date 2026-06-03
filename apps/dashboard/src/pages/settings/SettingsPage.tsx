@@ -1,138 +1,147 @@
 import { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { useTheme } from 'next-themes'
-import { Users, Palette, Settings, Plus, Edit3, Trash2, Moon, Sun, Building2, Globe, Clock } from 'lucide-react'
-import { api } from '@/lib/api'
+import {
+  Users, Settings, Plus, Edit3, Trash2, Shield, ShieldCheck, Eye,
+  Key, AlertTriangle, CheckCircle2, Lock, UserPlus,
+} from 'lucide-react'
+import { api as apiClient } from '@/lib/api'
+
+// ── Role definitions ────────────────────────────────────────
+interface RoleDef {
+  value: string
+  label: string
+  color: string
+  bgColor: string
+  borderColor: string
+  icon: any
+  description: string
+  permissions: string[]
+}
+
+const ROLES: RoleDef[] = [
+  {
+    value: 'admin', label: 'Administrador', color: 'text-[#FF0080]', bgColor: 'bg-[#FF0080]/10',
+    borderColor: 'border-[#FF0080]/30', icon: ShieldCheck,
+    description: 'Acceso total: usuarios, configuración, pentest, reportes, costos y seguridad.',
+    permissions: ['Ver dashboard', 'Ver eventos', 'Ver costos', 'Ver informes', 'Generar informes', 'Pentest', 'Gestionar usuarios', 'Configuración', 'Refrescar datos'],
+  },
+  {
+    value: 'analyst', label: 'Analista', color: 'text-[#BF00FF]', bgColor: 'bg-[#BF00FF]/10',
+    borderColor: 'border-[#BF00FF]/30', icon: Shield,
+    description: 'Puede ver todo, ejecutar pentest y generar reportes. No gestiona usuarios ni configuración.',
+    permissions: ['Ver dashboard', 'Ver eventos', 'Ver costos', 'Ver informes', 'Generar informes', 'Pentest', 'Refrescar datos'],
+  },
+  {
+    value: 'viewer', label: 'Visualizador', color: 'text-[#00E5FF]', bgColor: 'bg-[#00E5FF]/10',
+    borderColor: 'border-[#00E5FF]/30', icon: Eye,
+    description: 'Solo lectura: puede ver dashboards, eventos, costos e informes.',
+    permissions: ['Ver dashboard', 'Ver eventos', 'Ver costos', 'Ver informes'],
+  },
+]
+
+const roleMap: Record<string, RoleDef> = Object.fromEntries(ROLES.map(r => [r.value, r]))
 
 interface AppUser {
   id: string
   name: string
   email: string
-  role: 'admin' | 'viewer'
-}
-
-const roleBadge: Record<string, string> = {
-  admin: 'bg-primary/10 text-primary border-primary/30',
-  viewer: 'bg-muted text-muted-foreground border-border',
-}
-
-const roleLabel: Record<string, string> = {
-  admin: 'Administrador',
-  viewer: 'Visualizador',
+  username?: string
+  role: string
 }
 
 export function SettingsPage() {
-  const { theme, setTheme } = useTheme()
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AppUser | null>(null)
   const [deleteUser, setDeleteUser] = useState<AppUser | null>(null)
 
+  // Form state
   const [formName, setFormName] = useState('')
+  const [formUsername, setFormUsername] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formPassword, setFormPassword] = useState('')
-  const [formRole, setFormRole] = useState<'admin' | 'viewer'>('viewer')
+  const [formRole, setFormRole] = useState('viewer')
 
-  const [orgName, setOrgName] = useState('Treda Solutions')
-  const [language, setLanguage] = useState('es')
-  const [timezone, setTimezone] = useState('America/Bogota')
+  // Password change
   const [currentPwd, setCurrentPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [changingPwd, setChangingPwd] = useState(false)
+
+  // Get current user from JWT
+  const [currentUser, setCurrentUser] = useState<any>(null)
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const data = await api.get('/users')
-      if (Array.isArray(data)) {
-        setUsers(data)
-      } else if (data?.users) {
-        setUsers(data.users)
-      }
-    } catch (err: any) {
-      if (err?.status !== 401) {
-        console.error('Error fetching users:', err)
-      }
-    } finally {
-      setLoading(false)
-    }
+      const res = await api.get('/users')
+      const data = res.data
+      if (data?.users) setUsers(data.users)
+      else if (Array.isArray(data)) setUsers(data)
+    } catch { /* silent */ }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  const fetchMe = async () => {
+    try {
+      const res = await api.get('/auth/me')
+      setCurrentUser(res.data?.user || res.data)
+    } catch { /* silent */ }
+  }
 
+  useEffect(() => { fetchUsers(); fetchMe() }, [])
+
+  // ── User CRUD ──────────────────────────────────────────
   const openCreate = () => {
     setEditingUser(null)
-    setFormName('')
-    setFormEmail('')
-    setFormPassword('')
-    setFormRole('viewer')
+    setFormName(''); setFormUsername(''); setFormEmail(''); setFormPassword(''); setFormRole('viewer')
     setUserModalOpen(true)
   }
 
   const openEdit = (user: AppUser) => {
     setEditingUser(user)
-    setFormName(user.name)
-    setFormEmail(user.email)
-    setFormPassword('')
-    setFormRole(user.role)
+    setFormName(user.name); setFormUsername(user.username || ''); setFormEmail(user.email)
+    setFormPassword(''); setFormRole(user.role)
     setUserModalOpen(true)
   }
 
   const handleSaveUser = async () => {
-    if (!formName.trim() || !formEmail.trim()) {
-      toast.error('Nombre y email son obligatorios')
-      return
+    if (!formName.trim() || !formEmail.trim() || !formUsername.trim()) {
+      toast.error('Nombre, username y email son obligatorios'); return
     }
     try {
       if (editingUser) {
-        await api.put('/users/' + editingUser.id, {
-          name: formName, email: formEmail, role: formRole,
-        })
+        const body: any = { name: formName, email: formEmail, role: formRole }
+        if (formPassword.trim()) body.password = formPassword
+        await api.patch('/users/' + editingUser.id, body)
         toast.success('Usuario actualizado')
       } else {
-        if (!formPassword.trim()) {
-          toast.error('Contraseña obligatoria para nuevos usuarios')
-          return
-        }
-        await api.post('/users', {
-          name: formName, email: formEmail, password: formPassword, role: formRole,
-        })
+        if (!formPassword.trim()) { toast.error('Contraseña obligatoria para nuevos usuarios'); return }
+        await api.post('/users', { name: formName, username: formUsername, email: formEmail, password: formPassword, role: formRole })
         toast.success('Usuario creado')
       }
-      setUserModalOpen(false)
-      fetchUsers()
+      setUserModalOpen(false); fetchUsers()
     } catch (err: any) {
-      toast.error(err?.message || 'Error al guardar usuario')
+      toast.error(err.response?.data?.error || err.message || 'Error al guardar')
     }
   }
 
@@ -140,332 +149,309 @@ export function SettingsPage() {
     if (!deleteUser) return
     try {
       await api.delete('/users/' + deleteUser.id)
-      toast.success('Usuario eliminado')
-      setDeleteUser(null)
-      fetchUsers()
-    } catch (err: any) {
-      toast.error(err?.message || 'Error al eliminar usuario')
-    }
+      toast.success('Usuario eliminado'); setDeleteUser(null); fetchUsers()
+    } catch (err: any) { toast.error(err.response?.data?.error || 'Error al eliminar') }
   }
 
-  const handleSaveGeneral = () => {
-    api.put('/settings', { orgName, language, timezone })
-      .then(() => toast.success('Configuración general guardada'))
-      .catch(() => toast.success('Configuración general guardada'))
-  }
-
+  // ── Password change ────────────────────────────────────
   const handleChangePassword = async () => {
     if (!currentPwd || !newPwd) return toast.error('Completa todos los campos')
-    if (newPwd.length < 6) return toast.error('La nueva contraseña debe tener al menos 6 caracteres')
+    if (newPwd.length < 8) return toast.error('Mínimo 8 caracteres')
+    if (newPwd !== confirmPwd) return toast.error('Las contraseñas no coinciden')
+    if (currentPwd === newPwd) return toast.error('La nueva contraseña debe ser diferente')
+    setChangingPwd(true)
     try {
       await api.post('/auth/change-password', { currentPassword: currentPwd, newPassword: newPwd })
-      toast.success('Contraseña actualizada')
-      setCurrentPwd('')
-      setNewPwd('')
+      toast.success('Contraseña actualizada correctamente')
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Error al cambiar contraseña')
-    }
+    } finally { setChangingPwd(false) }
   }
+
+  const pwdStrength = (pwd: string): { level: number; label: string; color: string } => {
+    if (!pwd) return { level: 0, label: '', color: '' }
+    let score = 0
+    if (pwd.length >= 8) score++
+    if (pwd.length >= 12) score++
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++
+    if (/\d/.test(pwd)) score++
+    if (/[^A-Za-z0-9]/.test(pwd)) score++
+    if (score <= 2) return { level: 1, label: 'Débil', color: '#FF0040' }
+    if (score <= 3) return { level: 2, label: 'Media', color: '#FFD700' }
+    return { level: 3, label: 'Fuerte', color: '#00FF88' }
+  }
+
+  const strength = pwdStrength(newPwd)
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gradient">Configuración</h1>
-        <p className="text-sm text-muted-foreground mt-1">Administra usuarios, apariencia y preferencias generales</p>
+        <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// CONFIGURACIÓN</h1>
+        <p className="text-sm text-muted-foreground mt-1 font-mono">Administra usuarios, permisos y preferencias</p>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="users" className="gap-2">
-            <Users className="h-4 w-4" /> Usuarios
-          </TabsTrigger>
-          <TabsTrigger value="theme" className="gap-2">
-            <Palette className="h-4 w-4" /> Tema
-          </TabsTrigger>
-          <TabsTrigger value="general" className="gap-2">
-            <Settings className="h-4 w-4" /> General
-          </TabsTrigger>
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
+          <TabsTrigger value="users" className="gap-2 text-xs"><Users className="h-4 w-4" /> Usuarios</TabsTrigger>
+          <TabsTrigger value="password" className="gap-2 text-xs"><Key className="h-4 w-4" /> Contraseña</TabsTrigger>
+          <TabsTrigger value="roles" className="gap-2 text-xs"><Shield className="h-4 w-4" /> Permisos</TabsTrigger>
+          <TabsTrigger value="general" className="gap-2 text-xs"><Settings className="h-4 w-4" /> General</TabsTrigger>
         </TabsList>
 
+        {/* ─── TAB: USERS ─────────────────────────── */}
         <TabsContent value="users" className="mt-4">
-          <Card className="glass-card">
+          <Card className="glass-card border-white/5">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base font-semibold">Usuarios</CardTitle>
-                  <CardDescription className="text-xs">Gestiona los usuarios con acceso al dashboard</CardDescription>
+                  <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Usuarios del Sistema
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">Gestiona quién tiene acceso al dashboard</CardDescription>
                 </div>
-                <Button onClick={openCreate} className="gap-2 gradient-brand hover:opacity-90 transition-opacity">
-                  <Plus className="h-4 w-4" /> Agregar usuario
+                <Button onClick={openCreate} size="sm" className="gap-2 bg-[#FF0080]/10 text-[#FF0080] border border-[#FF0080]/30 hover:bg-[#FF0080]/20">
+                  <UserPlus className="h-4 w-4" /> Nuevo usuario
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Rol</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          Cargando usuarios...
-                        </TableCell>
+              {loading ? (
+                <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+              ) : users.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No hay usuarios</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/5">
+                        <TableHead className="font-display text-[10px] uppercase tracking-wider">Nombre</TableHead>
+                        <TableHead className="font-display text-[10px] uppercase tracking-wider">Username</TableHead>
+                        <TableHead className="font-display text-[10px] uppercase tracking-wider">Email</TableHead>
+                        <TableHead className="font-display text-[10px] uppercase tracking-wider">Rol</TableHead>
+                        <TableHead className="text-right font-display text-[10px] uppercase tracking-wider">Acciones</TableHead>
                       </TableRow>
-                    ) : users.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-12">
-                          <div className="flex flex-col items-center gap-3">
-                            <Users className="h-12 w-12 text-muted-foreground/40" />
-                            <p className="text-sm text-muted-foreground">No hay usuarios registrados</p>
-                            <Button size="sm" onClick={openCreate} className="gap-2">
-                              <Plus className="h-4 w-4" /> Invitar primer usuario
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      users.map((user) => (
-                        <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-medium text-sm">{user.name}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={roleBadge[user.role]}>
-                              {roleLabel[user.role]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(user)}>
-                                <Edit3 className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-critical hover:text-critical hover:bg-critical/10" onClick={() => setDeleteUser(user)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="theme" className="mt-4">
-          <Card className="glass-card max-w-lg">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Palette className="h-4 w-4 text-primary" />
-                Apariencia
-              </CardTitle>
-              <CardDescription className="text-xs">Personaliza el tema visual del dashboard</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
-                <div className="flex items-center gap-3">
-                  {theme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
-                  <div>
-                    <p className="text-sm font-medium">Tema oscuro</p>
-                    <p className="text-xs text-muted-foreground">Activar modo oscuro en toda la aplicación</p>
-                  </div>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => {
+                        const role = roleMap[user.role] || roleMap.viewer
+                        const RoleIcon = role.icon
+                        return (
+                          <TableRow key={user.id} className="border-white/5 hover:bg-white/[0.02]">
+                            <TableCell className="font-medium text-sm">{user.name}</TableCell>
+                            <TableCell className="text-xs font-mono text-[#00E5FF]">{user.username || '—'}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{user.email}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] font-display gap-1 ${role.bgColor} ${role.color} ${role.borderColor}`}>
+                                <RoleIcon className="h-3 w-3" /> {role.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#00E5FF]" onClick={() => openEdit(user)}>
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF0040] hover:bg-[#FF0040]/10" onClick={() => setDeleteUser(user)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
-                <Switch checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={`relative rounded-xl border-2 p-4 text-left transition-all ${theme === 'light' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'}`}
-                >
-                  <div className="mb-3 h-20 rounded-lg bg-white border shadow-sm flex items-center justify-center">
-                    <Sun className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <p className="text-sm font-medium">Claro</p>
-                  <p className="text-xs text-muted-foreground">Fondo blanco</p>
-                  {theme === 'light' && (
-                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </div>
-                  )}
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={`relative rounded-xl border-2 p-4 text-left transition-all ${theme === 'dark' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'}`}
-                >
-                  <div className="mb-3 h-20 rounded-lg bg-[#0F172A] border shadow-sm flex items-center justify-center">
-                    <Moon className="h-6 w-6 text-indigo-400" />
-                  </div>
-                  <p className="text-sm font-medium">Oscuro</p>
-                  <p className="text-xs text-muted-foreground">Fondo #0F172A</p>
-                  {theme === 'dark' && (
-                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </div>
-                  )}
-                </button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="general" className="mt-4">
-          <Card className="glass-card max-w-lg">
+        {/* ─── TAB: PASSWORD ──────────────────────── */}
+        <TabsContent value="password" className="mt-4">
+          <Card className="glass-card max-w-lg border-[#FFD700]/10">
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Settings className="h-4 w-4 text-primary" />
-                Preferencias Generales
+              <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+                <Lock className="h-4 w-4" /> Cambiar Contraseña
               </CardTitle>
-              <CardDescription className="text-xs">Configura datos de tu organización</CardDescription>
+              <CardDescription className="text-xs">
+                {currentUser ? `Usuario: ${currentUser.username || currentUser.email}` : 'Actualiza tu contraseña de acceso'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="orgName" className="flex items-center gap-2 text-sm">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  Nombre de la organización
-                </Label>
-                <Input
-                  id="orgName"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="Mi Organización"
-                />
+                <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Contraseña actual</Label>
+                <Input type="password" placeholder="Ingresa tu contraseña actual" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
+                  className="bg-white/[0.03] border-white/10 font-mono" />
               </div>
-
+              <Separator className="bg-white/5" />
               <div className="space-y-2">
-                <Label htmlFor="language" className="flex items-center gap-2 text-sm">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  Idioma
-                </Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger id="language" className="bg-muted/50">
-                    <SelectValue placeholder="Selecciona idioma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="pt">Português</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Nueva contraseña</Label>
+                <Input type="password" placeholder="Mínimo 8 caracteres" value={newPwd} onChange={e => setNewPwd(e.target.value)}
+                  className="bg-white/[0.03] border-white/10 font-mono" />
+                {newPwd && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      {[1,2,3].map(i => (
+                        <div key={i} className="h-1 flex-1 rounded-full" style={{ backgroundColor: i <= strength.level ? strength.color : 'rgba(255,255,255,0.05)' }} />
+                      ))}
+                    </div>
+                    <p className="text-[10px] font-mono" style={{ color: strength.color }}>{strength.label}</p>
+                  </div>
+                )}
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="timezone" className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  Zona horaria
-                </Label>
-                <Select value={timezone} onValueChange={setTimezone}>
-                  <SelectTrigger id="timezone" className="bg-muted/50">
-                    <SelectValue placeholder="Selecciona zona horaria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="America/Mexico_City">Ciudad de México (CST)</SelectItem>
-                    <SelectItem value="America/Bogota">Bogotá (COT)</SelectItem>
-                    <SelectItem value="America/Lima">Lima (PET)</SelectItem>
-                    <SelectItem value="America/Santiago">Santiago (CLT)</SelectItem>
-                    <SelectItem value="America/Argentina/Buenos_Aires">Buenos Aires (ART)</SelectItem>
-                    <SelectItem value="Europe/Madrid">Madrid (CET)</SelectItem>
-                    <SelectItem value="America/New_York">New York (EST)</SelectItem>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Confirmar contraseña</Label>
+                <Input type="password" placeholder="Repite la nueva contraseña" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
+                  className="bg-white/[0.03] border-white/10 font-mono" />
+                {confirmPwd && confirmPwd !== newPwd && (
+                  <p className="text-[10px] text-[#FF0040] font-mono">Las contraseñas no coinciden</p>
+                )}
               </div>
-
-              <Separator className="my-2" />
-              <h4 className="text-sm font-semibold">Cambiar Contraseña</h4>
-              <div className="space-y-2">
-                <Input type="password" placeholder="Contraseña actual" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} />
-                <Input type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" value={newPwd} onChange={e => setNewPwd(e.target.value)} />
-                <Button variant="outline" size="sm" onClick={handleChangePassword}>Actualizar contraseña</Button>
-              </div>
-
-              <Button onClick={handleSaveGeneral} className="gap-2 gradient-brand hover:opacity-90 transition-opacity">
-                Guardar cambios
+              <Button onClick={handleChangePassword} disabled={changingPwd || !currentPwd || !newPwd || !confirmPwd || newPwd !== confirmPwd}
+                className="w-full gap-2 bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30 hover:bg-[#FFD700]/20">
+                {changingPwd ? <><Key className="h-4 w-4 animate-spin" /> Actualizando...</> : <><Key className="h-4 w-4" /> Actualizar contraseña</>}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── TAB: PERMISSIONS ───────────────────── */}
+        <TabsContent value="roles" className="mt-4">
+          <div className="space-y-4">
+            {ROLES.map((role) => {
+              const RoleIcon = role.icon
+              const userCount = users.filter(u => u.role === role.value).length
+              return (
+                <Card key={role.value} className="glass-card border-white/5">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-xl ${role.bgColor} flex items-center justify-center`}>
+                          <RoleIcon className={`h-5 w-5 ${role.color}`} />
+                        </div>
+                        <div>
+                          <h3 className={`text-sm font-bold font-display ${role.color}`}>{role.label}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">{role.description}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1 font-mono">{userCount} usuario(s)</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {role.permissions.map((perm) => (
+                        <span key={perm} className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-muted-foreground bg-white/[0.02]">
+                          {perm}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </TabsContent>
+
+        {/* ─── TAB: GENERAL ──────────────────────── */}
+        <TabsContent value="general" className="mt-4">
+          <Card className="glass-card max-w-lg border-white/5">
+            <CardHeader>
+              <CardTitle className="text-xs font-display text-[#00E5FF] uppercase tracking-widest flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Preferencias Generales
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-4">
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Organización</p>
+                <p className="text-sm font-medium mt-1">Treda Solutions</p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-4">
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Zona Horaria</p>
+                <p className="text-sm font-medium mt-1">America/Bogota (COT)</p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-4">
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Versión</p>
+                <p className="text-sm font-mono mt-1">Dashboard Treda v2.0 — Cyberpunk Edition</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
+      {/* ─── CREATE/EDIT USER DIALOG ────────────── */}
       <Dialog open={userModalOpen} onOpenChange={(open) => !open && setUserModalOpen(false)}>
-        <DialogContent className="glass-card">
+        <DialogContent className="glass-card max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingUser ? 'Editar usuario' : 'Crear usuario'}</DialogTitle>
-            <DialogDescription>
-              {editingUser ? 'Modifica los datos del usuario seleccionado.' : 'Completa los datos para crear un nuevo usuario.'}
+            <DialogTitle className="font-display flex items-center gap-2">
+              {editingUser ? <Edit3 className="h-5 w-5 text-[#00E5FF]" /> : <UserPlus className="h-5 w-5 text-[#FF0080]" />}
+              {editingUser ? 'Editar usuario' : 'Nuevo usuario'}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {editingUser ? 'Modifica los datos del usuario' : 'Completa los campos para crear un usuario'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="userName">Nombre</Label>
-              <Input
-                id="userName"
-                placeholder="Nombre completo"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Nombre completo</Label>
+              <Input placeholder="Juan Pérez" value={formName} onChange={e => setFormName(e.target.value)} className="bg-white/[0.03] border-white/10" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="userEmail">Email</Label>
-              <Input
-                id="userEmail"
-                type="email"
-                placeholder="usuario@empresa.com"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-              />
+            <div className="space-y-1">
+              <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Username</Label>
+              <Input placeholder="juanperez" value={formUsername} onChange={e => setFormUsername(e.target.value)} className="bg-white/[0.03] border-white/10 font-mono" disabled={!!editingUser} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="userPassword">Contraseña</Label>
-              <Input
-                id="userPassword"
-                type="password"
-                placeholder={editingUser ? 'Dejar vacío para no cambiar' : 'Contraseña'}
-                value={formPassword}
-                onChange={(e) => setFormPassword(e.target.value)}
-              />
+            <div className="space-y-1">
+              <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Email</Label>
+              <Input type="email" placeholder="juan@treda.com" value={formEmail} onChange={e => setFormEmail(e.target.value)} className="bg-white/[0.03] border-white/10" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="userRole">Rol</Label>
-              <Select value={formRole} onValueChange={(v) => setFormRole(v as 'admin' | 'viewer')}>
-                <SelectTrigger id="userRole" className="bg-muted/50">
-                  <SelectValue placeholder="Selecciona rol" />
+            <div className="space-y-1">
+              <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Contraseña</Label>
+              <Input type="password" placeholder={editingUser ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'} value={formPassword} onChange={e => setFormPassword(e.target.value)} className="bg-white/[0.03] border-white/10 font-mono" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Rol</Label>
+              <Select value={formRole} onValueChange={setFormRole}>
+                <SelectTrigger className="bg-white/[0.03] border-white/10">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="viewer">Visualizador</SelectItem>
+                  {ROLES.map(r => (
+                    <SelectItem key={r.value} value={r.value}>
+                      <span className="flex items-center gap-2">
+                        <r.icon className={`h-3.5 w-3.5 ${r.color}`} />
+                        {r.label}
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {/* Role description */}
+              <div className="rounded-lg bg-white/[0.02] border border-white/5 p-2 mt-1">
+                <p className="text-[10px] text-muted-foreground">{roleMap[formRole]?.description}</p>
+              </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-2">
-            <Button variant="outline" onClick={() => setUserModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveUser} className="gradient-brand hover:opacity-90 transition-opacity">
-              {editingUser ? 'Guardar cambios' : 'Crear usuario'}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setUserModalOpen(false)} className="border-white/10">Cancelar</Button>
+            <Button size="sm" onClick={handleSaveUser} className="bg-[#FF0080]/10 text-[#FF0080] border border-[#FF0080]/30 hover:bg-[#FF0080]/20">
+              {editingUser ? 'Guardar' : 'Crear usuario'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* ─── DELETE CONFIRMATION ─────────────────── */}
       <Dialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
-        <DialogContent className="glass-card">
+        <DialogContent className="glass-card max-w-sm">
           <DialogHeader>
-            <DialogTitle>¿Eliminar usuario?</DialogTitle>
-            <DialogDescription>
-              Esto eliminará al usuario <strong>{deleteUser?.name}</strong>. Esta acción no se puede deshacer.
+            <DialogTitle className="font-display flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-[#FF0040]" /> Eliminar usuario
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              ¿Eliminar a <strong className="text-[#FF0040]">{deleteUser?.name}</strong>? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setDeleteUser(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>Eliminar</Button>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteUser(null)} className="border-white/10">Cancelar</Button>
+            <Button variant="destructive" size="sm" onClick={handleDeleteUser}>Eliminar</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -12,6 +12,7 @@ import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { NoticiasPage } from '@/pages/news/NoticiasPage'
 import { PentestPage } from '@/pages/pentest/PentestPage'
+import { PermissionsProvider } from '@/lib/permissions'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -31,7 +32,9 @@ function App() {
         path="/*"
         element={
           <PrivateRoute>
-            <DashboardLayout />
+            <PermissionsProvider>
+              <DashboardLayout />
+            </PermissionsProvider>
           </PrivateRoute>
         }
       >

@@ -10,14 +10,14 @@ const createSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3),
   password: z.string().min(6),
-  role: z.enum(["admin", "viewer"]).default("viewer"),
+  role: z.enum(["admin", "analyst", "viewer"]).default("viewer"),
 });
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
-  role: z.enum(["admin", "viewer"]).optional(),
+  role: z.enum(["admin", "analyst", "viewer"]).optional(),
 });
 
 const paramsSchema = z.object({
