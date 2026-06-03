@@ -14,6 +14,8 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(viewer)
+  mfaSecret String?  @map("mfa_secret")
+  mfaEnabled Boolean @default(false) @map("mfa_enabled")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("users")
@@ -171,4 +173,21 @@ model News {
   @@index([publishedAt])
   @@index([category])
   @@map("news")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  username  String
+  action    String
+  resource  String
+  detail    Json?
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
