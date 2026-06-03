@@ -196,4 +196,14 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     await prisma.report.delete({ where: { id } });
     return reply.status(204).send();
   });
+
+  // Bulk delete reports
+  fastify.post("/bulk-delete", { preHandler: [requireRole("admin")] }, async (request, reply) => {
+    const { ids } = request.body as { ids?: string[] };
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return reply.status(400).send({ error: "ids array is required" });
+    }
+    const result = await prisma.report.deleteMany({ where: { id: { in: ids } } });
+    return { deleted: result.count };
+  });
 }

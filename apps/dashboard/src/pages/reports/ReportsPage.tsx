@@ -21,7 +21,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { FileText, Download, Trash2, Loader2, Eye, Calendar } from 'lucide-react'
+import { FileText, Download, Trash2, Loader2, Eye, Calendar, CheckSquare, Square, Trash } from 'lucide-react'
 
 export function ReportsPage() {
   const [loading, setLoading] = useState(true)
@@ -33,6 +33,9 @@ export function ReportsPage() {
   const [viewLoading, setViewLoading] = useState(false)
   const [viewContent, setViewContent] = useState<string>('')
   const [deleteReport, setDeleteReport] = useState<any>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
 
   const fetchReports = async () => {
     try {
@@ -81,7 +84,6 @@ export function ReportsPage() {
       
       let html = ''
       
-      // Summary section
       html += '<div class="space-y-4">'
       html += '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">'
       html += statBox('Cuentas', s.accounts || 0, `${s.accountsHealthy || 0} saludables`)
@@ -90,7 +92,6 @@ export function ReportsPage() {
       html += statBox('Alertas', s.alertsActive || 0, 'activas')
       html += '</div>'
       
-      // Severity breakdown
       html += '<div class="mt-4"><h4 class="text-sm font-semibold mb-2">Eventos por severidad</h4>'
       html += '<div class="flex gap-2 flex-wrap">'
       const sevColors: Record<string, string> = { CRITICAL: '#EF4444', HIGH: '#F59E0B', MEDIUM: '#3B82F6', LOW: '#10B981' }
@@ -101,7 +102,6 @@ export function ReportsPage() {
       }
       html += '</div></div>'
       
-      // Costs by account
       if (parsed.byAccount && Object.keys(parsed.byAccount).length > 0) {
         html += '<div class="mt-4"><h4 class="text-sm font-semibold mb-2">Costos por cuenta</h4>'
         const sorted = Object.entries(parsed.byAccount).sort((a: any, b: any) => b[1] - a[1])
@@ -111,7 +111,6 @@ export function ReportsPage() {
         html += '</div>'
       }
       
-      // Top services
       if (parsed.services && Object.keys(parsed.services).length > 0) {
         html += '<div class="mt-4"><h4 class="text-sm font-semibold mb-2">Top servicios</h4>'
         const sorted = Object.entries(parsed.services).sort((a: any, b: any) => b[1] - a[1]).slice(0, 8)
@@ -122,7 +121,6 @@ export function ReportsPage() {
         html += '</div>'
       }
       
-      // Event timeline
       if (parsed.eventTimeline && Object.keys(parsed.eventTimeline).length > 0) {
         html += '<div class="mt-4"><h4 class="text-sm font-semibold mb-2">Eventos últimos 7 días</h4>'
         for (const [day, cnt] of Object.entries(parsed.eventTimeline)) {
@@ -131,7 +129,6 @@ export function ReportsPage() {
         html += '</div>'
       }
       
-      // Top events
       if (parsed.topEvents && parsed.topEvents.length > 0) {
         html += '<div class="mt-4"><h4 class="text-sm font-semibold mb-2">Últimos eventos</h4>'
         for (const evt of parsed.topEvents.slice(0, 5)) {
@@ -170,6 +167,7 @@ export function ReportsPage() {
     try {
       await api.delete(`/reports/${deleteReport.id}`)
       setReports(prev => prev.filter(r => r.id !== deleteReport.id))
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(deleteReport.id); return n })
       toast.success('Informe eliminado')
     } catch {
       toast.error('Error al eliminar informe')
@@ -177,20 +175,57 @@ export function ReportsPage() {
     setDeleteReport(null)
   }
 
+  // Selection handlers
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === reports.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(reports.map(r => r.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    try {
+      await api.post('/reports/bulk-delete', { ids: [...selectedIds] })
+      setReports(prev => prev.filter(r => !selectedIds.has(r.id)))
+      toast.success(`${selectedIds.size} informe(s) eliminado(s)`)
+      setSelectedIds(new Set())
+      setShowBulkDelete(false)
+    } catch {
+      toast.error('Error al eliminar informes')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const allSelected = reports.length > 0 && selectedIds.size === reports.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < reports.length
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Informes</h1>
-          <p className="text-sm text-muted-foreground mt-1">Genera y gestiona informes de seguridad y costos</p>
+          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// INFORMES</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-mono">Genera y gestiona informes de seguridad y costos</p>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="glass-card">
+        <Card className="glass-card border-[#00E5FF]/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-display text-[#00E5FF] uppercase tracking-widest flex items-center gap-2">
+              <FileText className="h-4 w-4" />
               Informe Diario
             </CardTitle>
             <CardDescription className="text-xs">Resumen de eventos y costos del día</CardDescription>
@@ -200,17 +235,17 @@ export function ReportsPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="bg-muted/50 h-8 text-xs" />
             </div>
-            <Button onClick={() => handleGenerate('DAILY')} disabled={generating === 'DAILY'} className="w-full gap-2" size="sm">
+            <Button onClick={() => handleGenerate('DAILY')} disabled={generating === 'DAILY'} className="w-full gap-2 border-[#00E5FF]/20 hover:border-[#00E5FF]/50" size="sm">
               {generating === 'DAILY' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               {generating === 'DAILY' ? 'Generando...' : 'Generar informe diario'}
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="glass-card">
+        <Card className="glass-card border-[#BF00FF]/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-display text-[#BF00FF] uppercase tracking-widest flex items-center gap-2">
+              <FileText className="h-4 w-4" />
               Informe Semanal
             </CardTitle>
             <CardDescription className="text-xs">Resumen semanal de eventos y costos</CardDescription>
@@ -220,7 +255,7 @@ export function ReportsPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="bg-muted/50 h-8 text-xs" />
             </div>
-            <Button onClick={() => handleGenerate('WEEKLY')} disabled={generating === 'WEEKLY'} className="w-full gap-2" size="sm" variant="secondary">
+            <Button onClick={() => handleGenerate('WEEKLY')} disabled={generating === 'WEEKLY'} className="w-full gap-2 border-[#BF00FF]/20 hover:border-[#BF00FF]/50" size="sm" variant="secondary">
               {generating === 'WEEKLY' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               {generating === 'WEEKLY' ? 'Generando...' : 'Generar informe semanal'}
             </Button>
@@ -228,9 +263,32 @@ export function ReportsPage() {
         </Card>
       </div>
 
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">Informes Generados</CardTitle>
+      <Card className="glass-card border-white/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Informes Generados
+              {selectedIds.size > 0 && (
+                <Badge className="ml-2 bg-[#FF0080]/10 text-[#FF0080] border-[#FF0080]/30 text-[10px]">
+                  {selectedIds.size} seleccionado(s)
+                </Badge>
+              )}
+            </CardTitle>
+            {/* Bulk actions toolbar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}
+                  className="h-7 text-xs gap-1 border-white/10 hover:border-white/20">
+                  Limpiar selección
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)}
+                  className="h-7 text-xs gap-1 bg-[#FF0040]/10 text-[#FF0040] border-[#FF0040]/30 hover:bg-[#FF0040]/20">
+                  <Trash className="h-3 w-3" />
+                  Eliminar ({selectedIds.size})
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -241,44 +299,69 @@ export function ReportsPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Generado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                  <TableRow className="border-white/5">
+                    <TableHead className="w-10">
+                      <button onClick={toggleSelectAll} className="flex items-center justify-center">
+                        {allSelected ? (
+                          <CheckSquare className="h-4 w-4 text-[#00E5FF]" />
+                        ) : someSelected ? (
+                          <div className="h-4 w-4 rounded border-2 border-[#00E5FF] bg-[#00E5FF]/20 flex items-center justify-center">
+                            <div className="h-1.5 w-1.5 rounded-sm bg-[#00E5FF]" />
+                          </div>
+                        ) : (
+                          <Square className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Tipo</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Estado</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Generado</TableHead>
+                    <TableHead className="text-right font-display text-[10px] uppercase tracking-wider">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reports.map((report: any) => (
-                    <TableRow key={report.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <Badge variant="outline" className={report.type === 'DAILY' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-secondary/10 text-secondary border-secondary/30'}>
-                          {report.type === 'DAILY' ? 'Diario' : 'Semanal'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={report.status === 'completed' ? 'bg-low/10 text-low border-low/30' : 'bg-muted text-muted-foreground border-border'}>
-                          {report.status === 'completed' ? 'Completado' : report.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(report.generatedAt).toLocaleString('es-CO')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleView(report)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(report)}>
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-critical hover:text-critical hover:bg-critical/10" onClick={() => setDeleteReport(report)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {reports.map((report: any) => {
+                    const isSelected = selectedIds.has(report.id)
+                    return (
+                      <TableRow key={report.id} className={`border-white/5 transition-colors ${isSelected ? 'bg-[#00E5FF]/[0.03]' : 'hover:bg-white/[0.02]'}`}>
+                        <TableCell>
+                          <button onClick={() => toggleSelect(report.id)} className="flex items-center justify-center">
+                            {isSelected ? (
+                              <CheckSquare className="h-4 w-4 text-[#00E5FF]" />
+                            ) : (
+                              <Square className="h-4 w-4 text-muted-foreground hover:text-[#00E5FF] transition-colors" />
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] font-display ${report.type === 'DAILY' ? 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/30' : 'bg-[#BF00FF]/10 text-[#BF00FF] border-[#BF00FF]/30'}`}>
+                            {report.type === 'DAILY' ? 'Diario' : 'Semanal'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] font-display ${report.status === 'completed' ? 'bg-[#00FF88]/10 text-[#00FF88] border-[#00FF88]/30' : 'bg-muted text-muted-foreground border-border'}`}>
+                            {report.status === 'completed' ? 'Completado' : report.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {new Date(report.generatedAt).toLocaleString('es-CO')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#00E5FF]" onClick={() => handleView(report)}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FFD700]" onClick={() => handleDownload(report)}>
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF0040] hover:bg-[#FF0040]/10" onClick={() => setDeleteReport(report)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -290,8 +373,8 @@ export function ReportsPage() {
       <Dialog open={!!viewReport} onOpenChange={(open) => !open && setViewReport(null)}>
         <DialogContent className="glass-card max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <FileText className="h-5 w-5 text-[#00E5FF]" />
               Informe {viewReport?.type === 'DAILY' ? 'Diario' : 'Semanal'}
             </DialogTitle>
             <DialogDescription>
@@ -312,16 +395,38 @@ export function ReportsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Single Delete Confirmation */}
       <Dialog open={!!deleteReport} onOpenChange={(open) => !open && setDeleteReport(null)}>
         <DialogContent className="glass-card max-w-sm">
           <DialogHeader>
-            <DialogTitle>Eliminar informe</DialogTitle>
+            <DialogTitle className="font-display">Eliminar informe</DialogTitle>
             <DialogDescription>¿Estás seguro de eliminar este informe?</DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteReport(null)}>Cancelar</Button>
             <Button variant="destructive" size="sm" onClick={handleDelete}>Eliminar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <Dialog open={showBulkDelete} onOpenChange={(open) => !open && setShowBulkDelete(false)}>
+        <DialogContent className="glass-card max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Trash className="h-5 w-5 text-[#FF0040]" />
+              Eliminar múltiples
+            </DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar <strong className="text-[#FF0040]">{selectedIds.size}</strong> informe(s)? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowBulkDelete(false)}>Cancelar</Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-1">
+              {bulkDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              {bulkDeleting ? 'Eliminando...' : `Eliminar ${selectedIds.size}`}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
