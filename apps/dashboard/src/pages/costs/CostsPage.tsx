@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,23 +22,57 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { DollarSign, Server, AlertTriangle, PiggyBank, Calendar, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  DollarSign, RefreshCw, TrendingUp, TrendingDown,
+  ArrowUpRight, ArrowDownRight, ChevronDown, ChevronRight,
+  Wallet, Target, Crown, Zap, Globe, CreditCard,
+  Coins, Landmark, Scale, Lightbulb, Calendar,
+  Activity, BarChart3, PieChart as PieIcon, Sparkles,
+} from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 
-const COLORS = ['#00FFFF', '#FF0080', '#BF00FF', '#FFFF00', '#FF0040', '#C9A84C', '#00E5FF']
+const COLORS = ['#00E5FF', '#FF0080', '#BF00FF', '#FFD700', '#FF0040', '#C9A84C', '#00FF88', '#FF6B35', '#7B68EE', '#FF1493']
 const PERIOD_LABELS: Record<string, string> = { '2026-03': 'Marzo 2026', '2026-04': 'Abril 2026', '2026-05': 'Mayo 2026', '2026-06': 'Junio 2026' }
+
+// Animated counter component
+function AnimatedValue({ value, prefix = '$', decimals = 2 }: { value: number, prefix?: string, decimals?: number }) {
+  const [display, setDisplay] = useState(0)
+  const ref = useRef(0)
+  useEffect(() => {
+    const start = ref.current
+    const diff = value - start
+    const duration = 800
+    const startTime = performance.now()
+    const animate = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(start + diff * eased)
+      if (progress < 1) requestAnimationFrame(animate)
+      else ref.current = value
+    }
+    requestAnimationFrame(animate)
+  }, [value])
+  return <>{prefix}{display.toFixed(decimals)}</>
+}
+
+// Glow ring component
+function GlowRing({ percent, color, size = 120, stroke = 8 }: { percent: number, color: string, size?: number, stroke?: number }) {
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (Math.min(percent, 100) / 100) * circumference
+  return (
+    <svg width={size} height={size} className="transform -rotate-90">
+      <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+        style={{ filter: `drop-shadow(0 0 6px ${color}50)`, transition: 'stroke-dashoffset 1s ease' }} />
+    </svg>
+  )
+}
 
 export function CostsPage() {
   const [loading, setLoading] = useState(true)
@@ -59,18 +93,10 @@ export function CostsPage() {
     try {
       const res = await api.post('/costs/refresh')
       const data = res.data || {}
-      if (data.success) {
-        toast.success(data.message || 'Costos actualizados')
-        // Reload the current period after refresh
-        if (selectedPeriod) loadPeriod(selectedPeriod)
-      } else {
-        toast.error(data.error || 'Error al actualizar costos')
-      }
-    } catch {
-      toast.error('Error al conectar con el servidor')
-    } finally {
-      setRefreshing(false)
-    }
+      if (data.success) { toast.success(data.message || 'Costos actualizados'); if (selectedPeriod) loadPeriod(selectedPeriod) }
+      else toast.error(data.error || 'Error al actualizar costos')
+    } catch { toast.error('Error al conectar con el servidor') }
+    finally { setRefreshing(false) }
   }
 
   useEffect(() => {
@@ -88,24 +114,16 @@ export function CostsPage() {
       const s = body.summary || {}
 
       const accts: any[] = []
-      if (s.byAccount && typeof s.byAccount === 'object') {
-        for (const [name, val] of Object.entries(s.byAccount)) {
-          accts.push({ name, value: Number(val) || 0 })
-        }
-      }
+      if (s.byAccount && typeof s.byAccount === 'object')
+        for (const [name, val] of Object.entries(s.byAccount)) accts.push({ name, value: Number(val) || 0 })
+
       const svcs: any[] = []
-      if (s.byService && typeof s.byService === 'object') {
-        for (const [name, val] of Object.entries(s.byService)) {
-          svcs.push({ name, value: Number(val) || 0 })
-        }
-      }
+      if (s.byService && typeof s.byService === 'object')
+        for (const [name, val] of Object.entries(s.byService)) svcs.push({ name, value: Number(val) || 0 })
 
       const byAccountService: Record<string, Record<string, number>> = {}
-      if (s.byAccountService && typeof s.byAccountService === 'object') {
-        for (const [acct, svcs] of Object.entries(s.byAccountService)) {
-          byAccountService[acct] = svcs as Record<string, number>
-        }
-      }
+      if (s.byAccountService && typeof s.byAccountService === 'object')
+        for (const [acct, svcs] of Object.entries(s.byAccountService)) byAccountService[acct] = svcs as Record<string, number>
 
       setCostsTotal(s.total || 0)
       setByAccount(accts)
@@ -114,19 +132,13 @@ export function CostsPage() {
 
       if (s.totalByMonth && typeof s.totalByMonth === 'object') {
         const periods = Object.keys(s.totalByMonth).sort()
-        // Ensure current period is always in the list, even if no data yet
         const now = new Date()
         const currentPeriod = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-        if (!periods.includes(currentPeriod)) {
-          periods.push(currentPeriod)
-          periods.sort()
-        }
+        if (!periods.includes(currentPeriod)) { periods.push(currentPeriod); periods.sort() }
         setAvailablePeriods([...periods].reverse())
         setByMonth(s.totalByMonth as Record<string, number>)
       }
-
       setSelectedPeriod(period)
-
       if (body.alerts && body.alerts.length > 0) {
         const a = body.alerts[0]
         setAlert({ budgetLimit: Number(a.budget), currentCost: Number(a.currentCost), percentUsed: Number(a.currentCost) / Number(a.budget) * 100 })
@@ -134,52 +146,55 @@ export function CostsPage() {
       }
       setLoading(false)
       return period
-    } catch {
-      toast.error('Error al cargar costos')
-      setLoading(false)
-      return period
-    }
+    } catch { toast.error('Error al cargar costos'); setLoading(false); return period }
   }
 
-  useEffect(() => {
-    if (selectedPeriod) loadPeriod(selectedPeriod)
-  }, [selectedPeriod])
+  useEffect(() => { if (selectedPeriod) loadPeriod(selectedPeriod) }, [selectedPeriod])
 
   const sortedAccounts = [...byAccount].sort((a, b) => b.value - a.value)
   const sortedServices = [...byService].sort((a, b) => b.value - a.value)
-
   const budgetPercent = alert ? alert.percentUsed : 0
 
   const saveBudget = async () => {
-    try {
-      await api.post('/costs', { type: 'alert', budgetLimit: Number(budgetLimit) })
-      toast.success('Presupuesto actualizado')
-    } catch {
-      toast.success('Presupuesto actualizado')
-    }
+    try { await api.post('/costs', { type: 'alert', budgetLimit: Number(budgetLimit) }); toast.success('Presupuesto actualizado') }
+    catch { toast.success('Presupuesto actualizado') }
   }
+
+  // Computed metrics
+  const topService = sortedServices[0]
+  const topAccount = sortedAccounts[0]
+  const monthHistory = availablePeriods.slice(-6).map(p => ({ month: PERIOD_LABELS[p]?.split(' ')[0] || p, total: byMonth[p] || 0, fullMonth: p }))
+  const currentMonthTotal = byMonth[availablePeriods[availablePeriods.length - 1]] || 0
+  const prevMonthTotal = availablePeriods.length >= 2 ? (byMonth[availablePeriods[availablePeriods.length - 2]] || 0) : 0
+  const growth = prevMonthTotal > 0 ? ((currentMonthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0
+  const dailyAvg = currentMonthTotal / Math.max(1, new Date().getDate())
+  const projected = currentMonthTotal * (30 / Math.max(1, new Date().getDate()))
+
+  // Pie data for services
+  const pieData = (() => {
+    const top5 = sortedServices.slice(0, 5)
+    const others = sortedServices.slice(5).reduce((sum, s) => sum + s.value, 0)
+    if (others > 0) top5.push({ name: 'Otros', value: others })
+    return top5
+  })()
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Costos Cloud</h1>
-          <p className="text-sm text-muted-foreground mt-1">Análisis de gastos por período</p>
+          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// COSTOS CLOUD</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-mono">Análisis de gastos por período y servicio</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}
+            className="gap-2 border-neon-cyan/20 hover:border-neon-cyan/50">
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Actualizando...' : 'Actualizar'}
           </Button>
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-44 bg-muted/50">
+            <SelectTrigger className="w-44 bg-muted/50 border-neon-cyan/10">
               <SelectValue placeholder="Seleccionar mes" />
             </SelectTrigger>
             <SelectContent>
@@ -191,162 +206,280 @@ export function CostsPage() {
         </div>
       </div>
 
+      {/* KPI Cards with gradient borders */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Costo del período</p>
-              {loading ? <Skeleton className="h-7 w-20 mt-1" /> : <h3 className="text-2xl font-bold">${costsTotal.toFixed(2)}</h3>}
+        {/* Total Cost */}
+        <Card className="glass-card relative overflow-hidden border-0 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00E5FF]/10 via-transparent to-[#BF00FF]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-5 relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Costo Total</p>
+                {loading ? <Skeleton className="h-8 w-24 mt-2" /> : (
+                  <h3 className="text-3xl font-bold font-display text-[#00E5FF] mt-1">
+                    <AnimatedValue value={costsTotal} />
+                  </h3>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-[#00E5FF]/10 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-[#00E5FF]" />
+              </div>
             </div>
-            <DollarSign className="h-8 w-8 text-primary/40" />
+            <div className="mt-3 flex items-center gap-1">
+              <div className="w-20 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#BF00FF]" style={{ width: `${Math.min(budgetPercent, 100)}%` }} />
+              </div>
+              <span className="text-[10px] text-muted-foreground font-mono">{budgetPercent.toFixed(0)}% del presupuesto</span>
+            </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Servicios activos</p>
-              {loading ? <Skeleton className="h-7 w-12 mt-1" /> : <h3 className="text-2xl font-bold">{sortedServices.length}</h3>}
+
+        {/* Growth Trend */}
+        <Card className="glass-card relative overflow-hidden border-0 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FF0080]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-5 relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Tendencia</p>
+                {loading ? <Skeleton className="h-8 w-20 mt-2" /> : (
+                  <div className="flex items-center gap-2 mt-1">
+                    <h3 className="text-3xl font-bold font-display" style={{ color: growth > 0 ? '#FF0040' : '#00FF88' }}>
+                      {growth > 0 ? <ArrowUpRight className="inline h-6 w-6" /> : <ArrowDownRight className="inline h-6 w-6" />}
+                      {Math.abs(growth).toFixed(1)}%
+                    </h3>
+                  </div>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-[#FF0080]/10 flex items-center justify-center">
+                {growth > 0 ? <TrendingUp className="h-6 w-6 text-[#FF0040]" /> : <TrendingDown className="h-6 w-6 text-[#00FF88]" />}
+              </div>
             </div>
-            <Server className="h-8 w-8 text-secondary-blue/40" />
+            <p className="text-[10px] text-muted-foreground mt-3 font-mono">
+              vs mes anterior: ${prevMonthTotal.toFixed(2)}
+            </p>
           </CardContent>
         </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Cuentas activas</p>
-              {loading ? <Skeleton className="h-7 w-12 mt-1" /> : <h3 className="text-2xl font-bold">{sortedAccounts.length}</h3>}
+
+        {/* Daily Average */}
+        <Card className="glass-card relative overflow-hidden border-0 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-5 relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Promedio/Día</p>
+                {loading ? <Skeleton className="h-8 w-20 mt-2" /> : (
+                  <h3 className="text-3xl font-bold font-display text-[#FFD700] mt-1">
+                    <AnimatedValue value={dailyAvg} />
+                  </h3>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-[#FFD700]/10 flex items-center justify-center">
+                <Zap className="h-6 w-6 text-[#FFD700]" />
+              </div>
             </div>
-            <Server className="h-8 w-8 text-accent-cyan/40" />
+            <p className="text-[10px] text-muted-foreground mt-3 font-mono">
+              Proyección mes: ${projected.toFixed(2)}
+            </p>
           </CardContent>
         </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Mayor servicio</p>
-              {loading ? <Skeleton className="h-7 w-20 mt-1" /> : (
-                <>
-                  <h3 className="text-xl font-bold truncate max-w-[140px]">{sortedServices[0]?.name || 'N/A'}</h3>
-                  <p className="text-xs text-muted-foreground">${(sortedServices[0]?.value || 0).toFixed(2)}</p>
-                </>
-              )}
+
+        {/* Top Service */}
+        <Card className="glass-card relative overflow-hidden border-0 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#BF00FF]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-5 relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Mayor Gasto</p>
+                {loading ? <Skeleton className="h-6 w-20 mt-2" /> : (
+                  <>
+                    <h3 className="text-lg font-bold font-display text-[#BF00FF] mt-1 truncate max-w-[140px]">{topService?.name || 'N/A'}</h3>
+                    <p className="text-xs text-muted-foreground font-mono">${(topService?.value || 0).toFixed(2)}</p>
+                  </>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-[#BF00FF]/10 flex items-center justify-center">
+                <Crown className="h-6 w-6 text-[#BF00FF]" />
+              </div>
             </div>
-            <PiggyBank className="h-8 w-8 text-accent-cyan/40" />
+            {costsTotal > 0 && topService && (
+              <p className="text-[10px] text-muted-foreground mt-3 font-mono">
+                {((topService.value / costsTotal) * 100).toFixed(1)}% del total
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {loading ? null : sortedAccounts.length === 0 ? (
         <Card className="glass-card">
-          <CardContent className="py-8 text-center text-muted-foreground text-sm">Sin datos de costos. Agrega cuentas cloud o sincroniza.</CardContent>
+          <CardContent className="py-12 text-center">
+            <Coins className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm font-display">Sin datos de costos</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Agrega cuentas cloud o sincroniza datos</p>
+          </CardContent>
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="glass-card">
-              <CardHeader><CardTitle className="text-sm font-semibold">Costos por cuenta</CardTitle></CardHeader>
+          {/* Charts Row */}
+          <div className="grid gap-4 lg:grid-cols-5">
+            {/* Area Chart — Monthly Trend */}
+            <Card className="glass-card lg:col-span-3 border-neon-cyan/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-display text-neon-cyan uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" /> Tendencia Mensual
+                </CardTitle>
+              </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={256}>
-                  <BarChart data={sortedAccounts}>
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                      {sortedAccounts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Bar>
-                  </BarChart>
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={monthHistory}>
+                    <defs>
+                      <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#00E5FF" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#00E5FF" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="month" stroke="#64748b" fontSize={11} fontFamily="monospace" />
+                    <YAxis stroke="#64748b" fontSize={11} fontFamily="monospace" tickFormatter={(v: number) => `$${v}`} />
+                    <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontFamily: 'monospace', fontSize: 12 }}
+                      formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
+                    <Area type="monotone" dataKey="total" stroke="#00E5FF" strokeWidth={2} fill="url(#costGradient)"
+                      dot={{ fill: '#00E5FF', r: 4, strokeWidth: 0 }}
+                      activeDot={{ fill: '#00E5FF', r: 6, stroke: '#0f172a', strokeWidth: 2 }} />
+                  </AreaChart>
                 </ResponsiveContainer>
+                {/* Quick stats below chart */}
+                <div className="grid grid-cols-3 gap-3 mt-4">
+                  <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3 text-center">
+                    <div className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Proyección</div>
+                    <div className="text-sm font-bold font-display text-[#FFD700] mt-0.5">${projected.toFixed(0)}</div>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3 text-center">
+                    <div className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Acumulado</div>
+                    <div className="text-sm font-bold font-display text-[#00E5FF] mt-0.5">${currentMonthTotal.toFixed(2)}</div>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3 text-center">
+                    <div className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Restante</div>
+                    <div className="text-sm font-bold font-display mt-0.5" style={{ color: budgetLimit - costsTotal > 0 ? '#00FF88' : '#FF0040' }}>
+                      ${(budgetLimit - costsTotal).toFixed(0)}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="glass-card">
-              <CardHeader><CardTitle className="text-sm font-semibold">Breakdown por servicio</CardTitle></CardHeader>
+
+            {/* Donut — Service Breakdown */}
+            <Card className="glass-card lg:col-span-2 border-[#BF00FF]/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-display text-[#BF00FF] uppercase tracking-widest flex items-center gap-2">
+                  <PieIcon className="h-4 w-4" /> Por Servicio
+                </CardTitle>
+              </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={256}>
-                  <PieChart>
-                    <Pie data={(() => {
-                      // Top 5 services, rest grouped as "Otros"
-                      const top5 = sortedServices.slice(0, 5);
-                      const others = sortedServices.slice(5).reduce((sum, s) => sum + s.value, 0);
-                      if (others > 0) top5.push({ name: 'Otros', value: others });
-                      return top5;
-                    })()} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                      {(() => {
-                        const top5 = sortedServices.slice(0, 5);
-                        const others = sortedServices.slice(5).reduce((sum, s) => sum + s.value, 0);
-                        const data = top5.map((_, i) => i);
-                        if (others > 0) data.push(data.length);
-                        return data;
-                      })().map((i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
-                    <Legend fontSize={11} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value"
+                        stroke="none">
+                        {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontFamily: 'monospace', fontSize: 12 }}
+                        formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Legend with color dots */}
+                <div className="space-y-1.5 mt-2">
+                  {pieData.map((item, i) => (
+                    <div key={item.name} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length], boxShadow: `0 0 6px ${COLORS[i % COLORS.length]}50` }} />
+                        <span className="text-muted-foreground truncate max-w-[120px]">{item.name}</span>
+                      </div>
+                      <span className="font-mono font-semibold">${item.value.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Trend Chart */}
-          <Card className="glass-card mt-4">
-            <CardHeader><CardTitle className="text-sm font-semibold">Tendencia Mensual</CardTitle></CardHeader>
+          {/* Bar Chart — Accounts */}
+          <Card className="glass-card border-[#FF0080]/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#FF0080] uppercase tracking-widest flex items-center gap-2">
+                <Globe className="h-4 w-4" /> Costos por Cuenta
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={availablePeriods.slice(-6).map(p => ({ month: p, total: byMonth[p] || 0 }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
-                  <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
-                  <Bar dataKey="total" fill="#00FFFF" radius={[4, 4, 0, 0]} />
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={sortedAccounts} layout="vertical" barSize={20}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                  <XAxis type="number" stroke="#64748b" fontSize={11} fontFamily="monospace" tickFormatter={(v: number) => `$${v}`} />
+                  <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} fontFamily="monospace" width={140} />
+                  <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontFamily: 'monospace', fontSize: 12 }}
+                    formatter={(v: number) => [`$${v.toFixed(2)}`, 'Costo']} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    {sortedAccounts.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} style={{ filter: `drop-shadow(0 0 4px ${COLORS[i % COLORS.length]}40)` }} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              {availablePeriods.length >= 2 && (
-                <div className="mt-3 grid grid-cols-3 gap-3 text-center">
-                  {(() => {
-                    const current = byMonth[availablePeriods[availablePeriods.length - 1]] || 0;
-                    const prev = byMonth[availablePeriods[availablePeriods.length - 2]] || 1;
-                    const growth = ((current - prev) / prev) * 100;
-                    const projected = current * (1 + growth / 100);
-                    const dailyAvg = current / Math.max(1, new Date().getDate());
-                    return (<>
-                      <div className="rounded-lg bg-muted/30 p-2"><div className="text-xs text-muted-foreground">Proyección</div><div className="text-sm font-bold">${projected.toFixed(0)}</div></div>
-                      <div className="rounded-lg bg-muted/30 p-2"><div className="text-xs text-muted-foreground">Promedio/día</div><div className="text-sm font-bold">${dailyAvg.toFixed(2)}</div></div>
-                      <div className="rounded-lg bg-muted/30 p-2"><div className="text-xs text-muted-foreground">Tendencia</div><div className={`text-sm font-bold ${growth > 0 ? 'text-red-500' : 'text-green-500'}`}>{growth > 0 ? '↑' : '↓'} {Math.abs(growth).toFixed(1)}%</div></div>
-                    </>);
-                  })()}
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
-            <CardHeader><CardTitle className="text-sm font-semibold">Detalle de Costos — {PERIOD_LABELS[selectedPeriod] || selectedPeriod}</CardTitle></CardHeader>
+          {/* Account Detail — Expandable */}
+          <Card className="glass-card border-white/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+                <Landmark className="h-4 w-4" /> Detalle por Cuenta — {PERIOD_LABELS[selectedPeriod] || selectedPeriod}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {sortedAccounts.map((acct) => {
                   const isExpanded = expandedAccount === acct.name
+                  const pct = costsTotal > 0 ? (acct.value / costsTotal * 100) : 0
+                  const acctColor = COLORS[sortedAccounts.indexOf(acct) % COLORS.length]
                   return (
-                    <div key={acct.name} className="rounded-lg border overflow-hidden">
+                    <div key={acct.name} className="rounded-xl border border-white/5 overflow-hidden transition-all hover:border-white/10">
                       <button onClick={() => setExpandedAccount(isExpanded ? null : acct.name)}
-                        className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors text-left">
-                        <div className="flex items-center gap-2">
+                        className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: acctColor, boxShadow: `0 0 8px ${acctColor}50` }} />
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                           <span className="font-medium text-sm">{acct.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {acct.name.toLowerCase().includes('aws') ? 'AWS' : acct.name.toLowerCase().includes('ia') ? 'AZURE' : acct.name.toLowerCase().includes('m365') ? 'M365' : 'CLOUD'}
+                          <Badge variant="outline" className="text-[10px] font-display" style={{ borderColor: `${acctColor}40`, color: acctColor }}>
+                            {acct.name.toLowerCase().includes('aws') ? 'AWS' : acct.name.toLowerCase().includes('azure') ? 'AZURE' : acct.name.toLowerCase().includes('m365') ? 'M365' : 'CLOUD'}
                           </Badge>
                         </div>
-                        <span className="font-bold text-sm">${acct.value.toFixed(2)}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: acctColor, boxShadow: `0 0 6px ${acctColor}50` }} />
+                          </div>
+                          <span className="font-bold text-sm font-mono" style={{ color: acctColor }}>${acct.value.toFixed(2)}</span>
+                        </div>
                       </button>
                       {isExpanded && (
-                        <div className="border-t bg-muted/20 px-3 py-2 space-y-1">
-                          {(byAccountService[acct.name] 
+                        <div className="border-t border-white/5 bg-white/[0.01] px-4 py-3 space-y-1">
+                          {(byAccountService[acct.name]
                             ? Object.entries(byAccountService[acct.name]).sort((a: any, b: any) => b[1] - a[1]).slice(0, 15)
                             : []
-                          ).map(([svcName, svcAmt]) => (
-                            <div key={svcName} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/30 text-sm">
-                              <span className="text-muted-foreground text-xs">{svcName}</span>
-                              <span>${Number(svcAmt).toFixed(2)}</span>
-                            </div>
-                          ))}
+                          ).map(([svcName, svcAmt], i) => {
+                            const maxVal = Math.max(...Object.values(byAccountService[acct.name] || {}).map(Number))
+                            const barPct = maxVal > 0 ? (Number(svcAmt) / maxVal * 100) : 0
+                            return (
+                              <div key={svcName} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/[0.02] text-sm group">
+                                <span className="text-muted-foreground text-xs w-4 text-right font-mono">{i + 1}</span>
+                                <span className="text-xs flex-1 truncate">{svcName}</span>
+                                <div className="w-32 h-1 rounded-full bg-white/5 overflow-hidden hidden sm:block">
+                                  <div className="h-full rounded-full bg-[#00E5FF]/60" style={{ width: `${barPct}%` }} />
+                                </div>
+                                <span className="font-mono text-xs font-semibold">${Number(svcAmt).toFixed(2)}</span>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -356,33 +489,40 @@ export function CostsPage() {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
-            <CardHeader><CardTitle className="text-sm font-semibold">Servicios por Costo (mayor a menor)</CardTitle></CardHeader>
+          {/* Services Table with bars */}
+          <Card className="glass-card border-white/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#00FF88] uppercase tracking-widest flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Servicios por Costo (mayor a menor)
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8">#</TableHead>
-                      <TableHead>Servicio</TableHead>
-                      <TableHead className="text-right">Costo</TableHead>
-                      <TableHead className="text-right">%</TableHead>
+                    <TableRow className="border-white/5">
+                      <TableHead className="w-8 font-display text-[10px] uppercase tracking-wider">#</TableHead>
+                      <TableHead className="font-display text-[10px] uppercase tracking-wider">Servicio</TableHead>
+                      <TableHead className="text-right font-display text-[10px] uppercase tracking-wider">Costo</TableHead>
+                      <TableHead className="text-right font-display text-[10px] uppercase tracking-wider">%</TableHead>
+                      <TableHead className="w-32"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedServices.map((svc, i) => {
                       const pct = costsTotal > 0 ? (svc.value / costsTotal * 100) : 0
+                      const color = COLORS[i % COLORS.length]
                       return (
-                        <TableRow key={svc.name} className="hover:bg-muted/30">
-                          <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                        <TableRow key={svc.name} className="hover:bg-white/[0.02] border-white/5 group">
+                          <TableCell className="text-xs text-muted-foreground font-mono">{i + 1}</TableCell>
                           <TableCell className="text-sm font-medium">{svc.name}</TableCell>
-                          <TableCell className="text-right text-sm font-semibold">${svc.value.toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-sm font-bold font-mono" style={{ color }}>${svc.value.toFixed(2)}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
-                              </div>
-                              <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(1)}%</span>
+                            <span className="text-xs text-muted-foreground font-mono">{pct.toFixed(1)}%</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color, boxShadow: `0 0 8px ${color}40` }} />
                             </div>
                           </TableCell>
                         </TableRow>
@@ -396,24 +536,58 @@ export function CostsPage() {
         </>
       )}
 
-      <Card className="glass-card">
-        <CardHeader><CardTitle className="text-sm font-semibold">Alertas de presupuesto</CardTitle></CardHeader>
+      {/* Budget Alert */}
+      <Card className="glass-card border-[#FF0040]/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-display text-[#FF0040] uppercase tracking-widest flex items-center gap-2">
+            <Target className="h-4 w-4" /> Alertas de Presupuesto
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="space-y-1 flex-1">
-              <label className="text-sm text-muted-foreground">Límite mensual ($)</label>
-              <Input type="number" value={budgetLimit} onChange={(e) => setBudgetLimit(Number(e.target.value))} />
+              <label className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Límite mensual ($)</label>
+              <Input type="number" value={budgetLimit} onChange={(e) => setBudgetLimit(Number(e.target.value))}
+                className="bg-white/[0.03] border-white/10 font-mono" />
             </div>
-            <Button variant="outline" onClick={saveBudget}>Guardar</Button>
+            <Button variant="outline" onClick={saveBudget} className="border-[#FF0040]/20 hover:border-[#FF0040]/50 hover:bg-[#FF0040]/5">
+              <Sparkles className="h-4 w-4 mr-1" /> Guardar
+            </Button>
           </div>
           {costsTotal > 0 && (
-            <>
-              <div className="flex justify-between text-sm">
-                <span>Gasto actual: ${costsTotal.toFixed(2)}</span>
-                <span className={budgetPercent >= 90 ? 'text-critical font-medium' : ''}>{budgetPercent.toFixed(0)}%</span>
+            <div className="space-y-3">
+              <div className="flex justify-between items-end">
+                <div>
+                  <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">Gasto actual</span>
+                  <p className="text-2xl font-bold font-display" style={{ color: budgetPercent >= 90 ? '#FF0040' : budgetPercent >= 70 ? '#FFD700' : '#00E5FF' }}>
+                    ${costsTotal.toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">Límite</span>
+                  <p className="text-lg font-mono text-muted-foreground">${budgetLimit.toFixed(2)}</p>
+                </div>
               </div>
-              <Progress value={Math.min(budgetPercent, 100)} className="h-2" />
-            </>
+              <div className="relative">
+                <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-1000"
+                    style={{
+                      width: `${Math.min(budgetPercent, 100)}%`,
+                      background: budgetPercent >= 90 ? 'linear-gradient(90deg, #FF0040, #FF0080)' :
+                                  budgetPercent >= 70 ? 'linear-gradient(90deg, #FFD700, #FF6B35)' :
+                                  'linear-gradient(90deg, #00E5FF, #BF00FF)',
+                      boxShadow: `0 0 12px ${budgetPercent >= 90 ? '#FF004050' : budgetPercent >= 70 ? '#FFD70050' : '#00E5FF50'}`,
+                    }} />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-[10px] text-muted-foreground font-mono">0%</span>
+                  <span className="text-[10px] font-mono font-bold" style={{ color: budgetPercent >= 90 ? '#FF0040' : '#00E5FF' }}>
+                    {budgetPercent.toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">100%</span>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
