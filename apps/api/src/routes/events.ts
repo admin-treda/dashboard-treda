@@ -5,10 +5,6 @@ import { requireRole } from "../middleware/auth";
 import { validateQuery } from "../middleware/validate";
 
 const querySchema = z.object({
-    accountId: z.string().optional(),
-    from: z.string().optional(),
-    to: z.string().optional(),
-    accountId: z.string().optional(),
   accountId: z.string().uuid().optional(),
   provider: z.enum(["AWS", "AZURE", "M365"]).optional(),
   severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
@@ -56,8 +52,14 @@ export default async function eventRoutes(fastify: FastifyInstance): Promise<voi
       prisma.event.count({ where: { ...where, severity: "LOW" } }),
     ]);
 
+    // Enrich events with username from metadata
+    const enriched = events.map((e: any) => ({
+      ...e,
+      username: e.metadata?.username || e.metadata?.user || e.metadata?.userName || null,
+    }));
+
     return {
-      data: events,
+      data: enriched,
       summary: { critical, high, medium, low, total },
       meta: { page, limit, total, pages: Math.ceil(total / limit) },
     };

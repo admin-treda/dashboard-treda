@@ -28,13 +28,13 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Search, Download, Filter, Calendar, ShieldAlert, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
+import { Search, Download, Filter, Calendar, ShieldAlert, AlertTriangle, Info, CheckCircle2, User, Clock, X } from 'lucide-react'
 
-const severityConfig: Record<string, { color: string; icon: any; label: string }> = {
-  CRITICAL: { color: 'bg-[#EF4444]/15 text-[#EF4444] border-[#EF4444]/30', icon: ShieldAlert, label: 'CRÍTICO' },
-  HIGH: { color: 'bg-[#F59E0B]/15 text-[#F59E0B] border-[#F59E0B]/30', icon: AlertTriangle, label: 'ALTO' },
-  MEDIUM: { color: 'bg-[#3B82F6]/15 text-[#3B82F6] border-[#3B82F6]/30', icon: Info, label: 'MEDIO' },
-  LOW: { color: 'bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30', icon: CheckCircle2, label: 'BAJO' },
+const severityConfig: Record<string, { color: string; bg: string; border: string; icon: any; label: string; glow: string }> = {
+  CRITICAL: { color: 'text-[#EF4444]', bg: 'bg-[#EF4444]/15', border: 'border-[#EF4444]/30', icon: ShieldAlert, label: 'CRÍTICO', glow: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]' },
+  HIGH: { color: 'text-[#F59E0B]', bg: 'bg-[#F59E0B]/15', border: 'border-[#F59E0B]/30', icon: AlertTriangle, label: 'ALTO', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]' },
+  MEDIUM: { color: 'text-[#3B82F6]', bg: 'bg-[#3B82F6]/15', border: 'border-[#3B82F6]/30', icon: Info, label: 'MEDIO', glow: 'shadow-[0_0_15px_rgba(59,130,246,0.15)]' },
+  LOW: { color: 'text-[#10B981]', bg: 'bg-[#10B981]/15', border: 'border-[#10B981]/30', icon: CheckCircle2, label: 'BAJO', glow: 'shadow-[0_0_15px_rgba(16,185,129,0.15)]' },
 }
 
 const providerBadge: Record<string, string> = {
@@ -95,14 +95,16 @@ export function EventsPage() {
     return events.filter((e: any) =>
       (e.description || '').toLowerCase().includes(q) ||
       (e.type || '').toLowerCase().includes(q) ||
-      (e.account?.name || '').toLowerCase().includes(q)
+      (e.account?.name || '').toLowerCase().includes(q) ||
+      (e.username || '').toLowerCase().includes(q)
     )
   }, [events, search])
 
   const exportCSV = () => {
-    const headers = ['Fecha', 'Cuenta', 'Proveedor', 'Tipo', 'Severidad', 'Descripción']
+    const headers = ['Fecha', 'Usuario', 'Cuenta', 'Proveedor', 'Tipo', 'Severidad', 'Descripción']
     const rows = filtered.map((e: any) => [
       new Date(e.createdAt).toLocaleString('es-CO'),
+      e.username || 'N/A',
       e.account?.name || e.accountId || '',
       providerLabel[e.provider] || e.provider,
       e.type,
@@ -118,72 +120,82 @@ export function EventsPage() {
     toast.success('CSV exportado')
   }
 
+  const handleSeverityClick = (sev: string) => {
+    setSeverityFilter(prev => prev === sev ? 'all' : sev)
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setProviderFilter('all')
+    setSeverityFilter('all')
+    setDateFrom('')
+    setDateTo('')
+  }
+
+  const hasActiveFilters = search || providerFilter !== 'all' || severityFilter !== 'all' || dateFrom || dateTo
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Eventos de Seguridad</h1>
-          <p className="text-sm text-muted-foreground mt-1">Monitoreo de eventos de seguridad en tiempo real</p>
+          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// SEGURIDAD</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-mono">Monitoreo de eventos de seguridad en tiempo real</p>
           <p className="text-xs text-muted-foreground mt-1">Última actualización: {new Date().toLocaleTimeString('es-CO')} — Recolector cada 20 min</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={exportCSV}>
+        <Button variant="outline" className="gap-2 border-[#00E5FF]/20 hover:border-[#00E5FF]/50" onClick={exportCSV}>
           <Download className="h-4 w-4" /> Exportar CSV
         </Button>
       </div>
 
+      {/* Severity Cards — CLICKABLE FILTERS */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Críticos</p>
-              <h3 className="text-2xl font-bold text-critical">{summary.critical || 0}</h3>
-            </div>
-            <ShieldAlert className="h-8 w-8 text-critical/40" />
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Altos</p>
-              <h3 className="text-2xl font-bold text-high">{summary.high || 0}</h3>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-high/40" />
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Medios</p>
-              <h3 className="text-2xl font-bold text-medium">{summary.medium || 0}</h3>
-            </div>
-            <Info className="h-8 w-8 text-medium/40" />
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Bajos</p>
-              <h3 className="text-2xl font-bold text-low">{summary.low || 0}</h3>
-            </div>
-            <CheckCircle2 className="h-8 w-8 text-low/40" />
-          </CardContent>
-        </Card>
+        {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((sev) => {
+          const cfg = severityConfig[sev]
+          const Icon = cfg.icon
+          const isActive = severityFilter === sev
+          const count = summary[sev.toLowerCase()] || 0
+          return (
+            <Card key={sev}
+              className={`glass-card cursor-pointer transition-all duration-200 ${isActive ? `${cfg.border} border-2 ${cfg.glow} ring-1 ring-inset` : 'border-white/5 hover:border-white/10'}`}
+              style={isActive ? { borderColor: sev === 'CRITICAL' ? '#EF4444' : sev === 'HIGH' ? '#F59E0B' : sev === 'MEDIUM' ? '#3B82F6' : '#10B981' } : {}}
+              onClick={() => handleSeverityClick(sev)}>
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">{cfg.label}</p>
+                  <h3 className={`text-2xl font-bold font-display ${isActive ? cfg.color : ''}`} style={!isActive ? { color: sev === 'CRITICAL' ? '#EF4444' : sev === 'HIGH' ? '#F59E0B' : sev === 'MEDIUM' ? '#3B82F6' : '#10B981' } : {}}>
+                    {count}
+                  </h3>
+                </div>
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${cfg.bg}`}>
+                  <Icon className={`h-5 w-5 ${cfg.color}`} />
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      <Card className="glass-card">
+      <Card className="glass-card border-white/5">
         <CardHeader className="pb-3">
           <div className="flex flex-col xl:flex-row gap-3 xl:items-center xl:justify-between">
-            <CardTitle className="text-base font-semibold">Eventos</CardTitle>
+            <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+              <Search className="h-4 w-4" /> Eventos
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 text-[10px] gap-1 text-[#FF0040] hover:text-[#FF0040] ml-2">
+                  <X className="h-3 w-3" /> Limpiar filtros
+                </Button>
+              )}
+            </CardTitle>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar..." className="pl-8 w-full sm:w-56 bg-muted/50" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input placeholder="Buscar por usuario, descripción..." className="pl-8 w-full sm:w-64 bg-muted/50 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <Input type="date" className="w-36 bg-muted/50 text-xs h-9" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                <input type="datetime-local" className="w-44 bg-muted/50 text-xs h-9 rounded-md border border-input px-3 text-foreground" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                 <span className="text-xs text-muted-foreground">-</span>
-                <Input type="date" className="w-36 bg-muted/50 text-xs h-9" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                <input type="datetime-local" className="w-44 bg-muted/50 text-xs h-9 rounded-md border border-input px-3 text-foreground" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
               <Select value={providerFilter} onValueChange={setProviderFilter}>
                 <SelectTrigger className="w-full sm:w-32 bg-muted/50"><Filter className="h-3.5 w-3.5 mr-1" /><SelectValue placeholder="Prov" /></SelectTrigger>
@@ -192,16 +204,6 @@ export function EventsPage() {
                   <SelectItem value="AWS">AWS</SelectItem>
                   <SelectItem value="AZURE">Azure</SelectItem>
                   <SelectItem value="M365">M365</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-full sm:w-32 bg-muted/50"><Filter className="h-3.5 w-3.5 mr-1" /><SelectValue placeholder="Sev." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="CRITICAL">Crítico</SelectItem>
-                  <SelectItem value="HIGH">Alto</SelectItem>
-                  <SelectItem value="MEDIUM">Medio</SelectItem>
-                  <SelectItem value="LOW">Bajo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -218,13 +220,14 @@ export function EventsPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Cuenta</TableHead>
-                    <TableHead>Prov.</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Severidad</TableHead>
-                    <TableHead>Descripción</TableHead>
+                  <TableRow className="border-white/5">
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Fecha</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider"><User className="h-3 w-3 inline mr-1" />Usuario</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Cuenta</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Prov.</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Tipo</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Severidad</TableHead>
+                    <TableHead className="font-display text-[10px] uppercase tracking-wider">Descripción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,15 +235,24 @@ export function EventsPage() {
                     const cfg = severityConfig[ev.severity] || severityConfig.LOW
                     const Icon = cfg.icon
                     return (
-                      <TableRow key={ev.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setSelectedEvent(ev)}>
-                        <TableCell className="text-xs whitespace-nowrap">{new Date(ev.createdAt).toLocaleString('es-CO')}</TableCell>
+                      <TableRow key={ev.id} className="cursor-pointer hover:bg-white/[0.02] transition-colors border-white/5" onClick={() => setSelectedEvent(ev)}>
+                        <TableCell className="text-xs whitespace-nowrap font-mono">{new Date(ev.createdAt).toLocaleString('es-CO')}</TableCell>
+                        <TableCell>
+                          {ev.username ? (
+                            <span className="text-xs font-mono text-[#00E5FF] flex items-center gap-1">
+                              <User className="h-3 w-3" /> {ev.username}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium text-sm">{ev.account?.name || ev.accountId?.slice(0, 8)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={providerBadge[ev.provider] || ''}>{providerLabel[ev.provider] || ev.provider}</Badge>
+                          <Badge variant="outline" className={`text-[10px] font-display ${providerBadge[ev.provider] || ''}`}>{providerLabel[ev.provider] || ev.provider}</Badge>
                         </TableCell>
-                        <TableCell className="text-sm">{ev.type}</TableCell>
+                        <TableCell className="text-sm font-mono">{ev.type}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`gap-1 ${cfg.color}`}>
+                          <Badge variant="outline" className={`gap-1 text-[10px] font-display ${cfg.bg} ${cfg.color} ${cfg.border}`}>
                             <Icon className="h-3 w-3" /> {cfg.label}
                           </Badge>
                         </TableCell>
@@ -255,37 +267,56 @@ export function EventsPage() {
         </CardContent>
       </Card>
 
+      {/* Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
         <DialogContent className="glass-card max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <ShieldAlert className="h-5 w-5 text-[#FF0040]" />
               Detalle del Evento
             </DialogTitle>
-            <DialogDescription>ID: {selectedEvent?.id?.slice(0, 8)}...</DialogDescription>
+            <DialogDescription className="font-mono">ID: {selectedEvent?.id?.slice(0, 8)}...</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Cuenta</span>
-              <span className="font-medium">{selectedEvent?.account?.name || selectedEvent?.accountId}</span>
+            {selectedEvent?.username && (
+              <div className="rounded-lg bg-[#00E5FF]/5 border border-[#00E5FF]/20 p-3">
+                <div className="flex items-center gap-2 text-[#00E5FF]">
+                  <User className="h-4 w-4" />
+                  <span className="text-xs font-display uppercase tracking-wider">Usuario</span>
+                </div>
+                <p className="font-mono text-lg mt-1">{selectedEvent.username}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-muted/30 p-3">
+                <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider">Cuenta</p>
+                <p className="font-medium mt-0.5">{selectedEvent?.account?.name || selectedEvent?.accountId}</p>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3">
+                <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider">Proveedor</p>
+                <Badge variant="outline" className={`mt-1 text-[10px] ${providerBadge[selectedEvent?.provider] || ''}`}>{selectedEvent?.provider}</Badge>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3">
+                <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider">Severidad</p>
+                <Badge variant="outline" className={`mt-1 text-[10px] ${selectedEvent ? severityConfig[selectedEvent.severity]?.bg : ''} ${selectedEvent ? severityConfig[selectedEvent.severity]?.color : ''} ${selectedEvent ? severityConfig[selectedEvent.severity]?.border : ''}`}>
+                  {selectedEvent ? (severityConfig[selectedEvent.severity]?.label || selectedEvent.severity) : ''}
+                </Badge>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3">
+                <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider">Tipo</p>
+                <p className="font-mono mt-0.5">{selectedEvent?.type}</p>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3 col-span-2">
+                <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider">Fecha/Hora</p>
+                <p className="font-mono mt-0.5 flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedEvent?.createdAt ? new Date(selectedEvent.createdAt).toLocaleString('es-CO') : 'N/A'}</p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Proveedor</span>
-              <Badge variant="outline" className={providerBadge[selectedEvent?.provider] || ''}>{selectedEvent?.provider}</Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Severidad</span>
-              <Badge variant="outline" className={selectedEvent ? severityConfig[selectedEvent.severity]?.color : ''}>{selectedEvent ? (severityConfig[selectedEvent.severity]?.label || selectedEvent.severity) : ''}</Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Tipo</span>
-              <span className="font-medium">{selectedEvent?.type}</span>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 mt-2">
-              <p className="text-muted-foreground text-xs mb-1">Descripción</p>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider mb-1">Descripción</p>
               <p className="font-medium">{selectedEvent?.description}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-muted-foreground text-xs mb-1">Metadatos</p>
+              <p className="text-muted-foreground text-[10px] font-display uppercase tracking-wider mb-1">Metadatos</p>
               <pre className="font-mono text-xs whitespace-pre-wrap">{JSON.stringify(selectedEvent?.metadata, null, 2)}</pre>
             </div>
           </div>
