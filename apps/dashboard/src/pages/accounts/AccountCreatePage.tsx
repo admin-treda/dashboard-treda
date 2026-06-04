@@ -96,7 +96,7 @@ export function AccountCreatePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Nueva Cuenta Cloud</h1>
+          <h1 className="text-2xl font-bold gradient-animated">Nueva Cuenta Cloud</h1>
           <p className="text-sm text-muted-foreground">Configura una nueva cuenta en 3 pasos</p>
         </div>
       </div>

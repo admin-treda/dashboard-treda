@@ -41,7 +41,7 @@ export function LoginPage() {
           <div className="h-16 w-16 rounded-2xl gradient-brand mx-auto flex items-center justify-center shadow-lg shadow-primary/20 mb-4 glow-purple">
             <Shield className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient">Dashboard Treda</h1>
+          <h1 className="text-3xl font-bold gradient-animated">Dashboard Treda</h1>
           <p className="text-muted-foreground mt-2">Dashboard Unificado Multi-Cloud</p>
         </div>
 

@@ -216,7 +216,7 @@ export function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// INFORMES</h1>
+          <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// INFORMES</h1>
           <p className="text-sm text-muted-foreground mt-1 font-mono">Genera y gestiona informes de seguridad y costos</p>
         </div>
       </div>
@@ -242,9 +242,9 @@ export function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-[#BF00FF]/10">
+        <Card className="glass-card border-[#1E90FF]/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-display text-[#BF00FF] uppercase tracking-widest flex items-center gap-2">
+            <CardTitle className="text-sm font-display text-[#1E90FF] uppercase tracking-widest flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Informe Semanal
             </CardTitle>
@@ -255,7 +255,7 @@ export function ReportsPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="bg-muted/50 h-8 text-xs" />
             </div>
-            <Button onClick={() => handleGenerate('WEEKLY')} disabled={generating === 'WEEKLY'} className="w-full gap-2 border-[#BF00FF]/20 hover:border-[#BF00FF]/50" size="sm" variant="secondary">
+            <Button onClick={() => handleGenerate('WEEKLY')} disabled={generating === 'WEEKLY'} className="w-full gap-2 border-[#1E90FF]/20 hover:border-[#1E90FF]/50" size="sm" variant="secondary">
               {generating === 'WEEKLY' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               {generating === 'WEEKLY' ? 'Generando...' : 'Generar informe semanal'}
             </Button>
@@ -269,7 +269,7 @@ export function ReportsPage() {
             <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
               <FileText className="h-4 w-4" /> Informes Generados
               {selectedIds.size > 0 && (
-                <Badge className="ml-2 bg-[#FF0080]/10 text-[#FF0080] border-[#FF0080]/30 text-[10px]">
+                <Badge className="ml-2 bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/30 text-[10px]">
                   {selectedIds.size} seleccionado(s)
                 </Badge>
               )}
@@ -282,7 +282,7 @@ export function ReportsPage() {
                   Limpiar selección
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => setShowBulkDelete(true)}
-                  className="h-7 text-xs gap-1 bg-[#FF0040]/10 text-[#FF0040] border-[#FF0040]/30 hover:bg-[#FF0040]/20">
+                  className="h-7 text-xs gap-1 bg-[#FF4444]/10 text-[#FF4444] border-[#FF4444]/30 hover:bg-[#FF4444]/20">
                   <Trash className="h-3 w-3" />
                   Eliminar ({selectedIds.size})
                 </Button>
@@ -334,7 +334,7 @@ export function ReportsPage() {
                           </button>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[10px] font-display ${report.type === 'DAILY' ? 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/30' : 'bg-[#BF00FF]/10 text-[#BF00FF] border-[#BF00FF]/30'}`}>
+                          <Badge variant="outline" className={`text-[10px] font-display ${report.type === 'DAILY' ? 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/30' : 'bg-[#1E90FF]/10 text-[#1E90FF] border-[#1E90FF]/30'}`}>
                             {report.type === 'DAILY' ? 'Diario' : 'Semanal'}
                           </Badge>
                         </TableCell>
@@ -354,7 +354,7 @@ export function ReportsPage() {
                             <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FFD700]" onClick={() => handleDownload(report)}>
                               <Download className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF0040] hover:bg-[#FF0040]/10" onClick={() => setDeleteReport(report)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF4444] hover:bg-[#FF4444]/10" onClick={() => setDeleteReport(report)}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -414,11 +414,11 @@ export function ReportsPage() {
         <DialogContent className="glass-card max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              <Trash className="h-5 w-5 text-[#FF0040]" />
+              <Trash className="h-5 w-5 text-[#FF4444]" />
               Eliminar múltiples
             </DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de eliminar <strong className="text-[#FF0040]">{selectedIds.size}</strong> informe(s)? Esta acción no se puede deshacer.
+              ¿Estás seguro de eliminar <strong className="text-[#FF4444]">{selectedIds.size}</strong> informe(s)? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">

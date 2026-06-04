@@ -99,7 +99,7 @@ export function NoticiasPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Noticias Tecnológicas</h1>
+          <h1 className="text-2xl font-bold gradient-animated">Noticias Tecnológicas</h1>
           <p className="text-sm text-muted-foreground mt-1">
             IA, Agentes, TI y Ciberseguridad — fuentes oficiales. La búsqueda y clasificación la realiza la aplicación sobre los artículos descargados.
           </p>

@@ -145,7 +145,7 @@ export function NotificationsPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">Notificaciones</h1>
+          <h1 className="text-2xl font-bold gradient-animated">Notificaciones</h1>
           <p className="text-sm text-muted-foreground mt-1">Canales para alertas de seguridad</p>
         </div>
         <div className="flex gap-2">

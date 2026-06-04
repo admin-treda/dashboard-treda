@@ -46,7 +46,7 @@ export function DashboardLayout() {
           </div>
           <div className="fixed bottom-0 right-0 z-40 border-t bg-background/80 backdrop-blur-sm"
             style={{ left: collapsed ? '4rem' : '16rem' }}>
-            <div className="flex items-center justify-between px-6 py-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between px-6 py-1.5 text-xs text-foreground/50">
               <span className="flex items-center gap-2">
                 <span className="status-dot active" />
                 Dashboard Treda — Dashboard Multi-Cloud

@@ -43,8 +43,8 @@ export function Sidebar() {
       )}
     >
       <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
-        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-primary font-bold text-sm">T</span>
+        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+          <span className="gradient-animated font-bold text-sm">T</span>
         </div>
         {!collapsed && (
           <span className="text-sm font-bold tracking-wider">TREDA</span>
@@ -75,8 +75,8 @@ export function Sidebar() {
       {/* Role badge */}
       {!collapsed && (
         <div className="px-3 py-2 border-t border-border">
-          <div className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">
-            Rol: <span className="text-[#BF00FF]">{perms.role}</span>
+          <div className="text-[11px] text-muted-foreground font-display uppercase tracking-wider">
+            Rol: <span className="text-neon-cyan">{perms.role}</span>
           </div>
         </div>
       )}

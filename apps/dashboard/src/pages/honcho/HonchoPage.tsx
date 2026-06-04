@@ -104,8 +104,8 @@ export function HonchoPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#BF00FF]/20 to-[#00F0FF]/20 flex items-center justify-center border border-[#BF00FF]/30">
-            <Brain className="h-5 w-5 text-[#BF00FF]" />
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#1E90FF]/20 to-[#00F0FF]/20 flex items-center justify-center border border-[#1E90FF]/30">
+            <Brain className="h-5 w-5 text-[#1E90FF]" />
           </div>
           <div>
             <h1 className="text-xl font-bold font-display neon-text">HONCHO</h1>
@@ -126,7 +126,7 @@ export function HonchoPage() {
               className={cn(
                 'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
                 activeTab === tab.id
-                  ? 'bg-[#BF00FF]/20 text-[#BF00FF] border border-[#BF00FF]/30'
+                  ? 'bg-[#1E90FF]/20 text-[#1E90FF] border border-[#1E90FF]/30'
                   : 'text-muted-foreground hover:text-white'
               )}
             >
@@ -146,8 +146,8 @@ export function HonchoPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-16">
-                  <div className="h-16 w-16 rounded-2xl bg-[#BF00FF]/10 flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="h-8 w-8 text-[#BF00FF]" />
+                  <div className="h-16 w-16 rounded-2xl bg-[#1E90FF]/10 flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="h-8 w-8 text-[#1E90FF]" />
                   </div>
                   <h3 className="text-lg font-bold text-white font-display mb-2">
                     Pregúntale a Honcho
@@ -166,7 +166,7 @@ export function HonchoPage() {
                       <button
                         key={q}
                         onClick={() => { setInput(q); }}
-                        className="text-xs px-3 py-1.5 rounded-full border border-[#BF00FF]/20 text-[#BF00FF] hover:bg-[#BF00FF]/10 transition-all"
+                        className="text-xs px-3 py-1.5 rounded-full border border-[#1E90FF]/20 text-[#1E90FF] hover:bg-[#1E90FF]/10 transition-all"
                       >
                         {q}
                       </button>
@@ -180,7 +180,7 @@ export function HonchoPage() {
                   <div className={cn(
                     'max-w-[70%] rounded-xl px-4 py-3',
                     msg.role === 'user'
-                      ? 'bg-[#BF00FF]/15 text-white border border-[#BF00FF]/30'
+                      ? 'bg-[#1E90FF]/15 text-white border border-[#1E90FF]/30'
                       : 'bg-[#00F0FF]/10 text-gray-200 border border-[#00F0FF]/20'
                   )}>
                     {msg.role === 'assistant' && (
@@ -220,16 +220,16 @@ export function HonchoPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="Escribe tu pregunta a Honcho..."
                   disabled={isLoading}
-                  className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-sm text-white placeholder-muted-foreground/50 focus:outline-none focus:border-[#BF00FF]/50 focus:ring-1 focus:ring-[#BF00FF]/30"
+                  className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-sm text-white placeholder-muted-foreground/50 focus:outline-none focus:border-[#1E90FF]/50 focus:ring-1 focus:ring-[#1E90FF]/30"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!input.trim() || isLoading}
                   className={cn(
                     'h-12 w-12 rounded-xl flex items-center justify-center',
-                    'bg-gradient-to-r from-[#BF00FF] to-[#00F0FF]',
+                    'bg-gradient-to-r from-[#1E90FF] to-[#00F0FF]',
                     'hover:opacity-90 disabled:opacity-30',
-                    'transition-all duration-200 shadow-lg shadow-[#BF00FF]/20'
+                    'transition-all duration-200 shadow-lg shadow-[#1E90FF]/20'
                   )}
                 >
                   <Send className="h-5 w-5 text-white" />
@@ -243,7 +243,7 @@ export function HonchoPage() {
         {activeTab === 'context' && (
           <div className="flex-1 overflow-y-auto p-6">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Database className="h-4 w-4 text-[#BF00FF]" />
+              <Database className="h-4 w-4 text-[#1E90FF]" />
               Contexto de Honcho
             </h3>
             {context ? (
@@ -252,7 +252,7 @@ export function HonchoPage() {
               </pre>
             ) : (
               <div className="text-center py-8">
-                <Loader2 className="h-6 w-6 text-[#BF00FF] animate-spin mx-auto" />
+                <Loader2 className="h-6 w-6 text-[#1E90FF] animate-spin mx-auto" />
                 <p className="text-sm text-muted-foreground mt-2">Cargando contexto...</p>
               </div>
             )}
@@ -269,12 +269,12 @@ export function HonchoPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') searchMemory() }}
                 placeholder="Buscar en la memoria de Honcho..."
-                className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-sm text-white placeholder-muted-foreground/50 focus:outline-none focus:border-[#BF00FF]/50"
+                className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-sm text-white placeholder-muted-foreground/50 focus:outline-none focus:border-[#1E90FF]/50"
               />
               <button
                 onClick={searchMemory}
                 disabled={!searchQuery.trim() || isSearching}
-                className="px-4 py-2 rounded-lg bg-[#BF00FF] text-white text-sm font-medium hover:bg-[#BF00FF]/80 disabled:opacity-30 transition-all"
+                className="px-4 py-2 rounded-lg bg-[#1E90FF] text-white text-sm font-medium hover:bg-[#1E90FF]/80 disabled:opacity-30 transition-all"
               >
                 {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </button>

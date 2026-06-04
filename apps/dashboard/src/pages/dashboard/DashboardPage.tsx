@@ -29,8 +29,8 @@ const providerColors: Record<string, string> = {
 }
 
 const severities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-const severityColors = ['#FF0040', '#FF0080', '#BF00FF', '#00E5FF']
-const chartColors = ['#00FFFF', '#FF0080', '#BF00FF', '#FFFF00', '#FF0040', '#39FF14']
+const severityColors = ['#FF4444', '#FF9500', '#3B82F6', '#00E5FF']
+const chartColors = ['#00FFFF', '#3B82F6', '#1E90FF', '#00E5FF', '#FF9500', '#FF4444']
 
 function SummaryCard({ title, value, subtitle, icon: Icon, loading, index }: any) {
   const glowColors = [
@@ -41,13 +41,13 @@ function SummaryCard({ title, value, subtitle, icon: Icon, loading, index }: any
   ]
   const borderColors = [
     'border-l-neon-cyan',
-    'border-l-neon-pink',
+    'border-l-neon-blue',
     'border-l-neon-purple',
     'border-l-brass',
   ]
   const textColors = [
     'text-neon-cyan',
-    'text-neon-pink',
+    'text-neon-blue',
     'text-neon-purple',
     'text-brass',
   ]
@@ -65,7 +65,7 @@ function SummaryCard({ title, value, subtitle, icon: Icon, loading, index }: any
                 {value}
               </h3>
             )}
-            {!loading && subtitle && <p className="text-xs text-muted-foreground/80 font-mono">{subtitle}</p>}
+            {!loading && subtitle && <p className="text-xs text-foreground/75 font-mono">{subtitle}</p>}
           </div>
           <div className={`rounded-lg bg-muted/50 p-2.5 group-hover:scale-110 transition-all duration-300 ${glowColors[index % 4]}`}>
             <Icon className={`h-4 w-4 ${textColors[index % 4]}`} />
@@ -104,16 +104,16 @@ export function DashboardPage() {
   const { total: eventTotal = 0, critical = 0, high = 0, medium = 0, low = 0 } = eventSummary
   const costByAccountData = Object.entries(byAccount).map(([n, v]) => ({ name: n, value: v as number }))
   const severityData = [
-    { name: 'CRÍTICO', value: critical, color: '#FF0040' },
-    { name: 'ALTO', value: high, color: '#FF0080' },
-    { name: 'MEDIO', value: medium, color: '#BF00FF' },
+    { name: 'CRÍTICO', value: critical, color: '#FF4444' },
+    { name: 'ALTO', value: high, color: '#FF9500' },
+    { name: 'MEDIO', value: medium, color: '#3B82F6' },
     { name: 'BAJO', value: low, color: '#00E5FF' },
   ].filter(s => s.value > 0)
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// DASHBOARD</h1>
+        <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// DASHBOARD</h1>
         {loading && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <span className="spinner" /> Cargando datos...
@@ -163,7 +163,7 @@ export function DashboardPage() {
         {/* Eventos por Severidad */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold font-display text-neon-pink tracking-wider uppercase">
+            <CardTitle className="text-sm font-semibold font-display text-neon-blue tracking-wider uppercase">
               ◈ Eventos por Severidad
             </CardTitle>
           </CardHeader>
@@ -248,7 +248,7 @@ export function DashboardPage() {
                           boxShadow: `0 0 6px ${severityColors[severities.indexOf(evt.severity)]}20`,
                         }}>{evt.severity}</Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate font-mono">{evt.description}</TableCell>
+                      <TableCell className="text-sm text-foreground/65 max-w-xs truncate font-mono">{evt.description}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

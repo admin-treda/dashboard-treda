@@ -138,7 +138,7 @@ export function EventsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// SEGURIDAD</h1>
+          <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// SEGURIDAD</h1>
           <p className="text-sm text-muted-foreground mt-1 font-mono">Monitoreo de eventos de seguridad en tiempo real</p>
           <p className="text-xs text-muted-foreground mt-1">Última actualización: {new Date().toLocaleTimeString('es-CO')} — Recolector cada 20 min</p>
         </div>
@@ -181,7 +181,7 @@ export function EventsPage() {
             <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
               <Search className="h-4 w-4" /> Eventos
               {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 text-[10px] gap-1 text-[#FF0040] hover:text-[#FF0040] ml-2">
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 text-[10px] gap-1 text-[#FF4444] hover:text-[#FF4444] ml-2">
                   <X className="h-3 w-3" /> Limpiar filtros
                 </Button>
               )}
@@ -272,7 +272,7 @@ export function EventsPage() {
         <DialogContent className="glass-card max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display">
-              <ShieldAlert className="h-5 w-5 text-[#FF0040]" />
+              <ShieldAlert className="h-5 w-5 text-[#FF4444]" />
               Detalle del Evento
             </DialogTitle>
             <DialogDescription className="font-mono">ID: {selectedEvent?.id?.slice(0, 8)}...</DialogDescription>

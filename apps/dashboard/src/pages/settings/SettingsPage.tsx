@@ -38,14 +38,14 @@ interface RoleDef {
 
 const ROLES: RoleDef[] = [
   {
-    value: 'admin', label: 'Administrador', color: 'text-[#FF0080]', bgColor: 'bg-[#FF0080]/10',
-    borderColor: 'border-[#FF0080]/30', icon: ShieldCheck,
+    value: 'admin', label: 'Administrador', color: 'text-[#3B82F6]', bgColor: 'bg-[#3B82F6]/10',
+    borderColor: 'border-[#3B82F6]/30', icon: ShieldCheck,
     description: 'Acceso total: usuarios, configuración, pentest, reportes, costos y seguridad.',
     permissions: ['Ver dashboard', 'Ver eventos', 'Ver costos', 'Ver informes', 'Generar informes', 'Pentest', 'Gestionar usuarios', 'Configuración', 'Refrescar datos'],
   },
   {
-    value: 'analyst', label: 'Analista', color: 'text-[#BF00FF]', bgColor: 'bg-[#BF00FF]/10',
-    borderColor: 'border-[#BF00FF]/30', icon: Shield,
+    value: 'analyst', label: 'Analista', color: 'text-[#1E90FF]', bgColor: 'bg-[#1E90FF]/10',
+    borderColor: 'border-[#1E90FF]/30', icon: Shield,
     description: 'Puede ver todo, ejecutar pentest y generar reportes. No gestiona usuarios ni configuración.',
     permissions: ['Ver dashboard', 'Ver eventos', 'Ver costos', 'Ver informes', 'Generar informes', 'Pentest', 'Refrescar datos'],
   },
@@ -177,7 +177,7 @@ export function SettingsPage() {
     if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++
     if (/\d/.test(pwd)) score++
     if (/[^A-Za-z0-9]/.test(pwd)) score++
-    if (score <= 2) return { level: 1, label: 'Débil', color: '#FF0040' }
+    if (score <= 2) return { level: 1, label: 'Débil', color: '#FF4444' }
     if (score <= 3) return { level: 2, label: 'Media', color: '#FFD700' }
     return { level: 3, label: 'Fuerte', color: '#00FF88' }
   }
@@ -187,7 +187,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// CONFIGURACIÓN</h1>
+        <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// CONFIGURACIÓN</h1>
         <p className="text-sm text-muted-foreground mt-1 font-mono">Administra usuarios, permisos y preferencias</p>
       </div>
 
@@ -210,7 +210,7 @@ export function SettingsPage() {
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">Gestiona quién tiene acceso al dashboard</CardDescription>
                 </div>
-                <Button onClick={openCreate} size="sm" className="gap-2 bg-[#FF0080]/10 text-[#FF0080] border border-[#FF0080]/30 hover:bg-[#FF0080]/20">
+                <Button onClick={openCreate} size="sm" className="gap-2 bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30 hover:bg-[#3B82F6]/20">
                   <UserPlus className="h-4 w-4" /> Nuevo usuario
                 </Button>
               </div>
@@ -251,7 +251,7 @@ export function SettingsPage() {
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#00E5FF]" onClick={() => openEdit(user)}>
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF0040] hover:bg-[#FF0040]/10" onClick={() => setDeleteUser(user)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#FF4444] hover:bg-[#FF4444]/10" onClick={() => setDeleteUser(user)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -305,7 +305,7 @@ export function SettingsPage() {
                 <Input type="password" placeholder="Repite la nueva contraseña" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
                   className="bg-white/[0.03] border-white/10 font-mono" />
                 {confirmPwd && confirmPwd !== newPwd && (
-                  <p className="text-[10px] text-[#FF0040] font-mono">Las contraseñas no coinciden</p>
+                  <p className="text-[10px] text-[#FF4444] font-mono">Las contraseñas no coinciden</p>
                 )}
               </div>
               <Button onClick={handleChangePassword} disabled={changingPwd || !currentPwd || !newPwd || !confirmPwd || newPwd !== confirmPwd}
@@ -382,7 +382,7 @@ export function SettingsPage() {
         <DialogContent className="glass-card max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              {editingUser ? <Edit3 className="h-5 w-5 text-[#00E5FF]" /> : <UserPlus className="h-5 w-5 text-[#FF0080]" />}
+              {editingUser ? <Edit3 className="h-5 w-5 text-[#00E5FF]" /> : <UserPlus className="h-5 w-5 text-[#3B82F6]" />}
               {editingUser ? 'Editar usuario' : 'Nuevo usuario'}
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -431,7 +431,7 @@ export function SettingsPage() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setUserModalOpen(false)} className="border-white/10">Cancelar</Button>
-            <Button size="sm" onClick={handleSaveUser} className="bg-[#FF0080]/10 text-[#FF0080] border border-[#FF0080]/30 hover:bg-[#FF0080]/20">
+            <Button size="sm" onClick={handleSaveUser} className="bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30 hover:bg-[#3B82F6]/20">
               {editingUser ? 'Guardar' : 'Crear usuario'}
             </Button>
           </div>
@@ -443,10 +443,10 @@ export function SettingsPage() {
         <DialogContent className="glass-card max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-[#FF0040]" /> Eliminar usuario
+              <AlertTriangle className="h-5 w-5 text-[#FF4444]" /> Eliminar usuario
             </DialogTitle>
             <DialogDescription className="text-xs">
-              ¿Eliminar a <strong className="text-[#FF0040]">{deleteUser?.name}</strong>? Esta acción no se puede deshacer.
+              ¿Eliminar a <strong className="text-[#FF4444]">{deleteUser?.name}</strong>? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">

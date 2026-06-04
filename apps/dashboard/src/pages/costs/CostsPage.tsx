@@ -34,7 +34,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 
-const COLORS = ['#00E5FF', '#FF0080', '#BF00FF', '#FFD700', '#FF0040', '#C9A84C', '#00FF88', '#FF6B35', '#7B68EE', '#FF1493']
+const COLORS = ['#00E5FF', '#3B82F6', '#1E90FF', '#FFD700', '#FF4444', '#C9A84C', '#00FF88', '#FF6B35', '#7B68EE', '#3B82F6']
 const PERIOD_LABELS: Record<string, string> = { '2026-03': 'Marzo 2026', '2026-04': 'Abril 2026', '2026-05': 'Mayo 2026', '2026-06': 'Junio 2026' }
 
 // Animated counter component
@@ -183,7 +183,7 @@ export function CostsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient font-display tracking-wider">// COSTOS CLOUD</h1>
+          <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// COSTOS CLOUD</h1>
           <p className="text-sm text-muted-foreground mt-1 font-mono">Análisis de gastos por período y servicio</p>
         </div>
         <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export function CostsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Cost */}
         <Card className="glass-card relative overflow-hidden border-0 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#00E5FF]/10 via-transparent to-[#BF00FF]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00E5FF]/10 via-transparent to-[#1E90FF]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardContent className="p-5 relative">
             <div className="flex items-center justify-between">
               <div>
@@ -227,7 +227,7 @@ export function CostsPage() {
             </div>
             <div className="mt-3 flex items-center gap-1">
               <div className="w-20 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#BF00FF]" style={{ width: `${Math.min(budgetPercent, 100)}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#1E90FF]" style={{ width: `${Math.min(budgetPercent, 100)}%` }} />
               </div>
               <span className="text-[10px] text-muted-foreground font-mono">{budgetPercent.toFixed(0)}% del presupuesto</span>
             </div>
@@ -236,22 +236,22 @@ export function CostsPage() {
 
         {/* Growth Trend */}
         <Card className="glass-card relative overflow-hidden border-0 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#FF0080]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#3B82F6]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardContent className="p-5 relative">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Tendencia</p>
                 {loading ? <Skeleton className="h-8 w-20 mt-2" /> : (
                   <div className="flex items-center gap-2 mt-1">
-                    <h3 className="text-3xl font-bold font-display" style={{ color: growth > 0 ? '#FF0040' : '#00FF88' }}>
+                    <h3 className="text-3xl font-bold font-display" style={{ color: growth > 0 ? '#FF4444' : '#00FF88' }}>
                       {growth > 0 ? <ArrowUpRight className="inline h-6 w-6" /> : <ArrowDownRight className="inline h-6 w-6" />}
                       {Math.abs(growth).toFixed(1)}%
                     </h3>
                   </div>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-xl bg-[#FF0080]/10 flex items-center justify-center">
-                {growth > 0 ? <TrendingUp className="h-6 w-6 text-[#FF0040]" /> : <TrendingDown className="h-6 w-6 text-[#00FF88]" />}
+              <div className="h-12 w-12 rounded-xl bg-[#3B82F6]/10 flex items-center justify-center">
+                {growth > 0 ? <TrendingUp className="h-6 w-6 text-[#FF4444]" /> : <TrendingDown className="h-6 w-6 text-[#00FF88]" />}
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground mt-3 font-mono">
@@ -285,20 +285,20 @@ export function CostsPage() {
 
         {/* Top Service */}
         <Card className="glass-card relative overflow-hidden border-0 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#BF00FF]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1E90FF]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardContent className="p-5 relative">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-muted-foreground font-display uppercase tracking-widest">Mayor Gasto</p>
                 {loading ? <Skeleton className="h-6 w-20 mt-2" /> : (
                   <>
-                    <h3 className="text-lg font-bold font-display text-[#BF00FF] mt-1 truncate max-w-[140px]">{topService?.name || 'N/A'}</h3>
+                    <h3 className="text-lg font-bold font-display text-[#1E90FF] mt-1 truncate max-w-[140px]">{topService?.name || 'N/A'}</h3>
                     <p className="text-xs text-muted-foreground font-mono">${(topService?.value || 0).toFixed(2)}</p>
                   </>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-xl bg-[#BF00FF]/10 flex items-center justify-center">
-                <Crown className="h-6 w-6 text-[#BF00FF]" />
+              <div className="h-12 w-12 rounded-xl bg-[#1E90FF]/10 flex items-center justify-center">
+                <Crown className="h-6 w-6 text-[#1E90FF]" />
               </div>
             </div>
             {costsTotal > 0 && topService && (
@@ -360,7 +360,7 @@ export function CostsPage() {
                   </div>
                   <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3 text-center">
                     <div className="text-[10px] text-muted-foreground font-display uppercase tracking-wider">Restante</div>
-                    <div className="text-sm font-bold font-display mt-0.5" style={{ color: budgetLimit - costsTotal > 0 ? '#00FF88' : '#FF0040' }}>
+                    <div className="text-sm font-bold font-display mt-0.5" style={{ color: budgetLimit - costsTotal > 0 ? '#00FF88' : '#FF4444' }}>
                       ${(budgetLimit - costsTotal).toFixed(0)}
                     </div>
                   </div>
@@ -369,9 +369,9 @@ export function CostsPage() {
             </Card>
 
             {/* Donut — Service Breakdown */}
-            <Card className="glass-card lg:col-span-2 border-[#BF00FF]/5">
+            <Card className="glass-card lg:col-span-2 border-[#1E90FF]/5">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-display text-[#BF00FF] uppercase tracking-widest flex items-center gap-2">
+                <CardTitle className="text-xs font-display text-[#1E90FF] uppercase tracking-widest flex items-center gap-2">
                   <PieIcon className="h-4 w-4" /> Por Servicio
                 </CardTitle>
               </CardHeader>
@@ -405,9 +405,9 @@ export function CostsPage() {
           </div>
 
           {/* Bar Chart — Accounts */}
-          <Card className="glass-card border-[#FF0080]/5">
+          <Card className="glass-card border-[#3B82F6]/5">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-display text-[#FF0080] uppercase tracking-widest flex items-center gap-2">
+              <CardTitle className="text-xs font-display text-[#3B82F6] uppercase tracking-widest flex items-center gap-2">
                 <Globe className="h-4 w-4" /> Costos por Cuenta
               </CardTitle>
             </CardHeader>
@@ -537,9 +537,9 @@ export function CostsPage() {
       )}
 
       {/* Budget Alert */}
-      <Card className="glass-card border-[#FF0040]/10">
+      <Card className="glass-card border-[#FF4444]/10">
         <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-display text-[#FF0040] uppercase tracking-widest flex items-center gap-2">
+          <CardTitle className="text-xs font-display text-[#FF4444] uppercase tracking-widest flex items-center gap-2">
             <Target className="h-4 w-4" /> Alertas de Presupuesto
           </CardTitle>
         </CardHeader>
@@ -550,7 +550,7 @@ export function CostsPage() {
               <Input type="number" value={budgetLimit} onChange={(e) => setBudgetLimit(Number(e.target.value))}
                 className="bg-white/[0.03] border-white/10 font-mono" />
             </div>
-            <Button variant="outline" onClick={saveBudget} className="border-[#FF0040]/20 hover:border-[#FF0040]/50 hover:bg-[#FF0040]/5">
+            <Button variant="outline" onClick={saveBudget} className="border-[#FF4444]/20 hover:border-[#FF4444]/50 hover:bg-[#FF4444]/5">
               <Sparkles className="h-4 w-4 mr-1" /> Guardar
             </Button>
           </div>
@@ -559,7 +559,7 @@ export function CostsPage() {
               <div className="flex justify-between items-end">
                 <div>
                   <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">Gasto actual</span>
-                  <p className="text-2xl font-bold font-display" style={{ color: budgetPercent >= 90 ? '#FF0040' : budgetPercent >= 70 ? '#FFD700' : '#00E5FF' }}>
+                  <p className="text-2xl font-bold font-display" style={{ color: budgetPercent >= 90 ? '#FF4444' : budgetPercent >= 70 ? '#FFD700' : '#00E5FF' }}>
                     ${costsTotal.toFixed(2)}
                   </p>
                 </div>
@@ -573,15 +573,15 @@ export function CostsPage() {
                   <div className="h-full rounded-full transition-all duration-1000"
                     style={{
                       width: `${Math.min(budgetPercent, 100)}%`,
-                      background: budgetPercent >= 90 ? 'linear-gradient(90deg, #FF0040, #FF0080)' :
+                      background: budgetPercent >= 90 ? 'linear-gradient(90deg, #FF4444, #3B82F6)' :
                                   budgetPercent >= 70 ? 'linear-gradient(90deg, #FFD700, #FF6B35)' :
-                                  'linear-gradient(90deg, #00E5FF, #BF00FF)',
-                      boxShadow: `0 0 12px ${budgetPercent >= 90 ? '#FF004050' : budgetPercent >= 70 ? '#FFD70050' : '#00E5FF50'}`,
+                                  'linear-gradient(90deg, #00E5FF, #1E90FF)',
+                      boxShadow: `0 0 12px ${budgetPercent >= 90 ? '#FF444450' : budgetPercent >= 70 ? '#FFD70050' : '#00E5FF50'}`,
                     }} />
                 </div>
                 <div className="flex justify-between mt-1">
                   <span className="text-[10px] text-muted-foreground font-mono">0%</span>
-                  <span className="text-[10px] font-mono font-bold" style={{ color: budgetPercent >= 90 ? '#FF0040' : '#00E5FF' }}>
+                  <span className="text-[10px] font-mono font-bold" style={{ color: budgetPercent >= 90 ? '#FF4444' : '#00E5FF' }}>
                     {budgetPercent.toFixed(1)}%
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono">100%</span>

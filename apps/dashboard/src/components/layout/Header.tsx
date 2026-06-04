@@ -90,7 +90,7 @@ export function Header() {
             <span className="text-black font-bold text-sm font-display">T</span>
           </div>
           <div className="hidden sm:block">
-            <span className="font-bold text-lg text-gradient font-display tracking-wider">TREDA</span>
+            <span className="font-bold text-lg gradient-animated font-display tracking-wider">TREDA</span>
           </div>
         </div>
 
@@ -116,11 +116,11 @@ export function Header() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="relative text-muted-foreground hover:text-neon-pink hover:bg-neon-pink/5"
+                className="relative text-muted-foreground hover:text-neon-blue hover:bg-neon-blue/5"
               >
                 <Bell className="h-5 w-5" />
                 {notifications.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-neon-pink text-black border-none shadow-[0_0_8px_rgba(255,0,128,0.4)]">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-neon-blue text-black border-none shadow-[0_0_8px_rgba(30,90,200,0.4)]">
                     {notifications.length}
                   </Badge>
                 )}
@@ -146,7 +146,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <button className="relative h-8 w-8 rounded-full hover:bg-neon-cyan/5 transition-colors">
                 <Avatar className="h-8 w-8 border border-neon-cyan/20">
-                  <AvatarFallback className="bg-gradient-to-br from-neon-cyan to-neon-pink text-black font-bold font-display">
+                  <AvatarFallback className="bg-gradient-to-br from-neon-cyan to-neon-blue text-black font-bold font-display">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
