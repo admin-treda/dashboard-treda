@@ -191,3 +191,137 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+model PentestScan {
+  id             String     @id @default(uuid())
+  url            String
+  userId         String?    @map("user_id")
+  username       String?    @default("")
+  status         ScanStatus @default(pending)
+  profile        String     @default("balanced")
+  targetId       String?    @map("target_id")
+  authType       String?    @default("") @map("auth_type")
+  authValue      String?    @default("") @map("auth_value")
+  phase          String     @default("init")
+  phaseLabel     String     @default("Inicialización") @map("phase_label")
+  progress       Int        @default(0)
+  startedAt      DateTime   @default(now()) @map("started_at")
+  finishedAt     DateTime?  @map("finished_at")
+  error          String?
+  summary        Json       @default("{}")
+  openPorts      Json       @default("[]") @map("open_ports")
+  subdomains     Json       @default("[]")
+  technologies   Json       @default("[]")
+  discoveredUrls Json       @default("[]") @map("discovered_urls")
+  sslInfo        Json?      @map("ssl_info")
+  wafInfo        Json?      @map("waf_info")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  results        PentestResult[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("pentest_scans")
+}
+
+model PentestResult {
+  id          String   @id @default(uuid())
+  scanId      String   @map("scan_id")
+  template    String
+  name        String
+  severity    String
+  tool        String
+  type        String   @default("")
+  host        String   @default("")
+  matchedAt   String   @default("") @map("matched_at")
+  description String   @default("")
+  reference   Json     @default("[]")
+  tags        Json     @default("[]")
+  curl        String   @default("")
+  request     String   @default("")
+  response    String   @default("")
+  status      String   @default("open")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  scan        PentestScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([severity])
+  @@index([status])
+  @@map("pentest_results")
+}
+
+enum ScanStatus {
+  pending
+  running
+  queued
+  completed
+  error
+  cancelled
+}
+
+model PentestTarget {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  tags        Json     @default("[]")
+  authType    String?  @default("") @map("auth_type")
+  authValue   String?  @default("") @map("auth_value")
+  notes       String?  @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("pentest_targets")
+}
+
+model PentestSchedule {
+  id          String   @id @default(uuid())
+  targetId    String?  @map("target_id")
+  url         String
+  profile     String   @default("balanced")
+  authType    String?  @default("") @map("auth_type")
+  authValue   String?  @default("") @map("auth_value")
+  cron        String
+  enabled     Boolean  @default(true)
+  lastRun     DateTime? @map("last_run")
+  nextRun     DateTime? @map("next_run")
+  userId      String?  @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([enabled])
+  @@index([nextRun])
+  @@map("pentest_schedules")
+}
+
+model PentestTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  profile     String   @default("balanced")
+  authType    String?  @default("") @map("auth_type")
+  authValue   String?  @default("") @map("auth_value")
+  tags        Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([name])
+  @@map("pentest_templates")
+}
+
+model PentestAuditLog {
+  id        String   @id @default(uuid())
+  scanId    String?  @map("scan_id")
+  userId    String?  @map("user_id")
+  username  String   @default("")
+  action    String
+  detail    Json?
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([scanId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("pentest_audit_logs")
+}

@@ -4,7 +4,7 @@ import { config } from "../config";
 export interface JwtPayload {
   userId: string;
   email: string;
-  role: "admin" | "viewer";
+  role: "admin" | "analyst" | "viewer";
   iat: number;
 }
 
@@ -23,7 +23,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
-export function requireRole(...allowedRoles: Array<"admin" | "viewer">) {
+export function requireRole(...allowedRoles: Array<"admin" | "analyst" | "viewer">) {
   return async function (request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
       await request.jwtVerify();
