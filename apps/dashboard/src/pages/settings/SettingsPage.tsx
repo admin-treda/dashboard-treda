@@ -20,9 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
   Users, Settings, Plus, Edit3, Trash2, Shield, ShieldCheck, Eye,
-  Key, AlertTriangle, CheckCircle2, Lock, UserPlus,
+  Key, AlertTriangle, CheckCircle2, Lock, UserPlus, ShieldAlert, Copy, Check,
 } from 'lucide-react'
 import { api as apiClient } from '@/lib/api'
+import { QRCodeSVG } from 'qrcode.react'
 
 // ── Role definitions ────────────────────────────────────────
 interface RoleDef {
@@ -86,7 +87,15 @@ export function SettingsPage() {
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [changingPwd, setChangingPwd] = useState(false)
+  // MFA state
+  const [mfaStatus, setMfaStatus] = useState<'loading' | 'disabled' | 'setup' | 'verify' | 'enabled'>('loading')
+  const [mfaSecret, setMfaSecret] = useState('')
+  const [mfaUri, setMfaUri] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [copiedSecret, setCopiedSecret] = useState(false)
 
+  // Get current user from JWT
   // Get current user from JWT
   const [currentUser, setCurrentUser] = useState<any>(null)
 
@@ -109,6 +118,88 @@ export function SettingsPage() {
   }
 
   useEffect(() => { fetchUsers(); fetchMe() }, [])
+  // ── MFA Functions ───────────────────────────────────────
+  const fetchMfaStatus = async () => {
+    try {
+      const res = await api.get('/auth/me')
+      const user = res.data?.user || res.data
+      if (user?.mfaEnabled) {
+        setMfaStatus('enabled')
+      } else {
+        setMfaStatus('disabled')
+      }
+    } catch {
+      setMfaStatus('disabled')
+    }
+  }
+
+  useEffect(() => { fetchMfaStatus() }, [])
+
+  const handleMfaSetup = async () => {
+    setMfaLoading(true)
+    try {
+      const res = await api.post('/auth/mfa/setup')
+      setMfaSecret(res.data.secret || '')
+      setMfaUri(res.data.uri || '')
+      setMfaStatus('verify')
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al iniciar MFA')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  const handleMfaVerify = async () => {
+    if (!mfaCode || mfaCode.length !== 6) {
+      toast.error('Ingresa un código de 6 dígitos')
+      return
+    }
+    setMfaLoading(true)
+    try {
+      const res = await api.post('/auth/mfa/verify', { code: mfaCode })
+      if (res.data.success) {
+        toast.success('MFA activado correctamente')
+        setMfaStatus('enabled')
+        setMfaCode('')
+        fetchMe()
+      } else {
+        toast.error(res.data.error || 'Código inválido')
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al verificar código')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  const handleMfaDisable = async () => {
+    if (!mfaCode || mfaCode.length !== 6) {
+      toast.error('Ingresa tu código MFA para desactivar')
+      return
+    }
+    setMfaLoading(true)
+    try {
+      const res = await api.post('/auth/mfa/disable', { code: mfaCode })
+      if (res.data.success) {
+        toast.success('MFA desactivado')
+        setMfaStatus('disabled')
+        setMfaCode('')
+        fetchMe()
+      } else {
+        toast.error(res.data.error || 'Código inválido')
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al desactivar MFA')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  const copySecret = () => {
+    navigator.clipboard.writeText(mfaSecret)
+    setCopiedSecret(true)
+    setTimeout(() => setCopiedSecret(false), 2000)
+  }
 
   // ── User CRUD ──────────────────────────────────────────
   const openCreate = () => {
@@ -192,9 +283,10 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="grid w-full max-w-xl grid-cols-5">
           <TabsTrigger value="users" className="gap-2 text-xs"><Users className="h-4 w-4" /> Usuarios</TabsTrigger>
           <TabsTrigger value="password" className="gap-2 text-xs"><Key className="h-4 w-4" /> Contraseña</TabsTrigger>
+          <TabsTrigger value="mfa" className="gap-2 text-xs"><ShieldAlert className="h-4 w-4" /> Seguridad</TabsTrigger>
           <TabsTrigger value="roles" className="gap-2 text-xs"><Shield className="h-4 w-4" /> Permisos</TabsTrigger>
           <TabsTrigger value="general" className="gap-2 text-xs"><Settings className="h-4 w-4" /> General</TabsTrigger>
         </TabsList>
@@ -317,6 +409,138 @@ export function SettingsPage() {
         </TabsContent>
 
         {/* ─── TAB: PERMISSIONS ───────────────────── */}
+        {/* ─── TAB: MFA / SECURITY ──────────────────── */}
+        <TabsContent value="mfa" className="mt-4">
+          <Card className="glass-card max-w-lg border-[#FFD700]/10">
+            <CardHeader>
+              <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" /> Autenticación de Dos Factores (MFA)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Protege tu cuenta con un código de verificación adicional
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mfaStatus === 'loading' && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="spinner" /> Verificando estado...
+                </div>
+              )}
+
+              {mfaStatus === 'enabled' && (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-[#00FF88]/5 border border-[#00FF88]/20 p-4 flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-[#00FF88]" />
+                    <div>
+                      <p className="text-sm font-medium text-[#00FF88]">MFA Activado</p>
+                      <p className="text-xs text-muted-foreground">Tu cuenta está protegida con autenticación de dos factores</p>
+                    </div>
+                  </div>
+                  <Separator className="bg-white/5" />
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                      Ingresa tu código MFA para desactivar
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                        className="bg-white/[0.03] border-white/10 font-mono text-center text-lg tracking-[0.3em]"
+                      />
+                      <Button
+                        onClick={handleMfaDisable}
+                        disabled={mfaLoading || mfaCode.length !== 6}
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        {mfaLoading ? <span className="spinner" /> : 'Desactivar'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(mfaStatus === 'disabled' || mfaStatus === 'setup') && (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-white/[0.03] border border-white/5 p-4 flex items-center gap-3">
+                    <Shield className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">MFA Desactivado</p>
+                      <p className="text-xs text-muted-foreground">Tu cuenta no tiene protección adicional</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleMfaSetup}
+                    disabled={mfaLoading}
+                    className="w-full gap-2 bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30 hover:bg-[#FFD700]/20"
+                  >
+                    {mfaLoading ? <><span className="spinner" /> Generando QR...</> : <><ShieldAlert className="h-4 w-4" /> Activar MFA</>}
+                  </Button>
+                </div>
+              )}
+
+              {mfaStatus === 'verify' && mfaSecret && (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-[#FFD700]/5 border border-[#FFD700]/20 p-4">
+                    <p className="text-xs font-display text-[#FFD700] uppercase tracking-wider mb-3">1. Escanea este QR con Google Authenticator</p>
+                    <div className="flex justify-center py-4 bg-white rounded-lg">
+                      <QRCodeSVG
+                        value={mfaUri || `otpauth://totp/Treda:admin?secret=${mfaSecret}&issuer=Treda`}
+                        size={200}
+                        level="M"
+                      />
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground">O ingresa manualmente este código:</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs font-mono bg-white/[0.05] px-3 py-2 rounded border border-white/10 select-all">
+                          {mfaSecret}
+                        </code>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copySecret}>
+                          {copiedSecret ? <Check className="h-4 w-4 text-[#00FF88]" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-white/[0.03] border border-white/5 p-4">
+                    <p className="text-xs font-display text-[#00E5FF] uppercase tracking-wider mb-3">2. Ingresa el código de 6 dígitos</p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                        className="bg-white/[0.03] border-white/10 font-mono text-center text-lg tracking-[0.3em]"
+                        autoFocus
+                      />
+                      <Button
+                        onClick={handleMfaVerify}
+                        disabled={mfaLoading || mfaCode.length !== 6}
+                        className="gap-2 bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 hover:bg-[#00FF88]/20"
+                      >
+                        {mfaLoading ? <span className="spinner" /> : 'Verificar y Activar'}
+                      </Button>
+                    </div>
+                    <button
+                      onClick={() => { setMfaStatus('disabled'); setMfaCode(''); setMfaSecret('') }}
+                      className="text-xs text-muted-foreground hover:text-[#00E5FF] mt-2 transition-colors"
+                    >
+                      ← Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="roles" className="mt-4">
           <div className="space-y-4">
             {ROLES.map((role) => {
