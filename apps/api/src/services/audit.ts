@@ -12,17 +12,18 @@ interface AuditEntry {
 
 export async function auditLog(entry: AuditEntry): Promise<void> {
   try {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO audit_logs (user_id, username, action, resource, detail, ip, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      entry.userId || null,
-      entry.username,
-      entry.action,
-      entry.resource,
-      entry.detail ? JSON.stringify(entry.detail) : null,
-      entry.ip || null,
-      entry.userAgent || null
-    );
+    // Use Prisma create instead of raw SQL to handle JSONB properly
+    await prisma.auditLog.create({
+      data: {
+        userId: entry.userId || null,
+        username: entry.username,
+        action: entry.action,
+        resource: entry.resource,
+        detail: entry.detail || undefined,
+        ip: entry.ip || null,
+        userAgent: entry.userAgent || null,
+      },
+    });
   } catch (err: any) {
     console.error("[AuditLog] Failed:", err.message);
   }
@@ -35,20 +36,20 @@ export async function getAuditLogs(params: {
   offset?: number;
 }) {
   const { userId, action, limit = 50, offset = 0 } = params;
-  let where = "1=1";
-  const values: any[] = [];
-  let idx = 1;
 
-  if (userId) { where += ` AND user_id = $${idx++}`; values.push(userId); }
-  if (action) { where += ` AND action = $${idx++}`; values.push(action); }
+  const where: any = {};
+  if (userId) where.userId = userId;
+  if (action) where.action = action;
 
-  const rows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM audit_logs WHERE ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
-    ...values, limit, offset
-  );
-  const countResult = await prisma.$queryRawUnsafe(
-    `SELECT COUNT(*) as total FROM audit_logs WHERE ${where}`,
-    ...values
-  );
-  return { logs: rows, total: Number((countResult as any)[0]?.total || 0) };
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+
+  return { logs, total };
 }

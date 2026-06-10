@@ -17,11 +17,6 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
-const mfaSetupSchema = z.object({
-  secret: z.string(),
-  code: z.string().length(6),
-});
-
 const mfaVerifySchema = z.object({
   code: z.string().length(6),
 });
@@ -29,19 +24,16 @@ const mfaVerifySchema = z.object({
 // ── Account lockout ─────────────────────────────────────────
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 function isLocked(username: string): boolean {
   const record = failedAttempts.get(username.toLowerCase());
   if (!record) return false;
-  if (record.lockedUntil > 0) {
-    if (Date.now() > record.lockedUntil) {
-      failedAttempts.delete(username.toLowerCase());
-      return false;
-    }
-    return true;
+  if (record.lockedUntil > 0 && Date.now() > record.lockedUntil) {
+    failedAttempts.delete(username.toLowerCase());
+    return false;
   }
-  return false;
+  return record.lockedUntil > 0;
 }
 
 function recordFailedAttempt(username: string): void {
@@ -61,7 +53,7 @@ function clearFailedAttempts(username: string): void {
   failedAttempts.delete(username.toLowerCase());
 }
 
-// ── TOTP helpers (RFC 6238 — base32 secret, Google Authenticator compatible)
+// ── TOTP (RFC 6238 — base32 secret, Google Authenticator)
 function generateTOTPSecret(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let secret = "";
@@ -89,7 +81,6 @@ async function verifyTOTP(secret: string, code: string): Promise<boolean> {
   try {
     const key = base32Decode(secret);
     const epoch = Math.floor(Date.now() / 1000 / 30);
-    // Check current and adjacent windows (±1 step = ±30s tolerance)
     for (let offset = -1; offset <= 1; offset++) {
       const time = epoch + offset;
       const timeBuffer = Buffer.alloc(8);
@@ -98,18 +89,16 @@ async function verifyTOTP(secret: string, code: string): Promise<boolean> {
       const hmac = crypto.createHmac("sha1", key);
       hmac.update(timeBuffer);
       const hash = hmac.digest();
-      const offset2 = hash[hash.length - 1] & 0x0f;
+      const off = hash[hash.length - 1] & 0x0f;
       const code2 = (
-        ((hash[offset2] & 0x7f) << 24) |
-        ((hash[offset2 + 1] & 0xff) << 16) |
-        ((hash[offset2 + 2] & 0xff) << 8) |
-        (hash[offset2 + 3] & 0xff)
+        ((hash[off] & 0x7f) << 24) |
+        ((hash[off + 1] & 0xff) << 16) |
+        ((hash[off + 2] & 0xff) << 8) |
+        (hash[off + 3] & 0xff)
       ) % 1000000;
       if (code2.toString().padStart(6, "0") === code) return true;
     }
-  } catch {
-    // Verification failed
-  }
+  } catch {}
   return false;
 }
 
@@ -126,6 +115,7 @@ const requireAuth = async (request: any, reply: any) => {
 };
 
 export default async function (fastify: FastifyInstance) {
+  // ── Login ─────────────────────────────────────────────────
   fastify.post("/login", {
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     preHandler: validateBody(loginSchema),
@@ -134,12 +124,9 @@ export default async function (fastify: FastifyInstance) {
     const ip = request.ip || request.socket.remoteAddress;
     const userAgent = request.headers["user-agent"] || "";
 
-    // Check account lockout
     if (isLocked(username)) {
       await auditLog({ username, action: "LOGIN_BLOCKED", resource: "auth", detail: { reason: "locked" }, ip, userAgent });
-      return reply.status(423).send({
-        error: "Cuenta bloqueada temporalmente. Intente de nuevo en 15 minutos.",
-      });
+      return reply.status(423).send({ error: "Cuenta bloqueada temporalmente. Intente de nuevo en 15 minutos." });
     }
 
     const user = await prisma.user.findFirst({
@@ -158,7 +145,7 @@ export default async function (fastify: FastifyInstance) {
       return reply.status(401).send({ error: "Credenciales inválidas" });
     }
 
-    // MFA check — must decrypt secret before verification
+    // MFA check — secret stored as plaintext base32
     if (user.mfaEnabled && user.mfaSecret) {
       if (!mfaCode) {
         return reply.status(400).send({ error: "MFA requerido", mfaRequired: true });
@@ -170,7 +157,6 @@ export default async function (fastify: FastifyInstance) {
       }
     }
 
-    // Success — clear failed attempts
     clearFailedAttempts(username);
 
     const token = fastify.jwt.sign({
@@ -182,13 +168,12 @@ export default async function (fastify: FastifyInstance) {
 
     await auditLog({ userId: user.id, username: user.username, action: "LOGIN_SUCCESS", resource: "auth", ip, userAgent });
 
-    // Set httpOnly cookie
     reply.setCookie("token", token, {
       path: "/",
       httpOnly: true,
-      secure: false, // localhost, no HTTPS
+      secure: false,
       sameSite: "lax",
-      maxAge: 2 * 60 * 60, // 2 hours
+      maxAge: 2 * 60 * 60,
     });
 
     return {
@@ -204,6 +189,7 @@ export default async function (fastify: FastifyInstance) {
     };
   });
 
+  // ── Get current user ──────────────────────────────────────
   fastify.get("/me", { preHandler: [requireAuth] }, async (request, reply) => {
     const { userId } = (request as any).user;
     const user = await prisma.user.findUnique({
@@ -214,6 +200,7 @@ export default async function (fastify: FastifyInstance) {
     return { user };
   });
 
+  // ── Change password ───────────────────────────────────────
   fastify.post("/change-password", { preHandler: [requireAuth, validateBody(changePasswordSchema)] }, async (request, reply) => {
     const { currentPassword, newPassword } = request.body as z.infer<typeof changePasswordSchema>;
     const { userId, username } = (request as any).user;
@@ -229,27 +216,24 @@ export default async function (fastify: FastifyInstance) {
 
     const hashed = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
-
     await auditLog({ userId, username, action: "PASSWORD_CHANGED", resource: "auth" });
-
     return { success: true, message: "Contraseña actualizada" };
   });
 
-  // MFA Setup — generate secret
+  // ── MFA Setup — generate secret ───────────────────────────
   fastify.post("/mfa/setup", { preHandler: [requireAuth] }, async (request) => {
     const { userId, username } = (request as any).user;
     const secret = generateTOTPSecret();
     const uri = secretToGoogleAuthUri(secret, username);
 
-    // Store temporarily (user must verify before enabling)
+    // Store as plaintext base32 (NOT encrypted — simpler and more reliable)
     await prisma.user.update({ where: { id: userId }, data: { mfaSecret: secret } });
-
     await auditLog({ userId, username, action: "MFA_SETUP_INITIATED", resource: "auth" });
 
     return { secret, uri };
   });
 
-  // MFA Verify — confirm setup
+  // ── MFA Verify — confirm setup ────────────────────────────
   fastify.post("/mfa/verify", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request) => {
     const { userId, username } = (request as any).user;
     const { code } = request.body as z.infer<typeof mfaVerifySchema>;
@@ -266,7 +250,7 @@ export default async function (fastify: FastifyInstance) {
     return { success: true, message: "MFA activado correctamente" };
   });
 
-  // MFA Disable
+  // ── MFA Disable ───────────────────────────────────────────
   fastify.post("/mfa/disable", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request) => {
     const { userId, username } = (request as any).user;
     const { code } = request.body as z.infer<typeof mfaVerifySchema>;
@@ -283,12 +267,10 @@ export default async function (fastify: FastifyInstance) {
     return { success: true, message: "MFA desactivado" };
   });
 
-  // Audit logs
+  // ── Audit logs ────────────────────────────────────────────
   fastify.get("/audit-logs", { preHandler: [requireAuth] }, async (request) => {
     const { userId, role } = (request as any).user;
     const q = request.query as any;
-
-    // Only admins can see all logs; others see only their own
     const filterUserId = role === "admin" ? q.userId : userId;
 
     const { getAuditLogs } = await import("../services/audit");
