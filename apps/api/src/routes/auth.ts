@@ -1,3 +1,11 @@
+// ═══════════════════════════════════════════════════════════════════════
+// WARNING: DO NOT MODIFY MFA SECRET STORAGE WITHOUT READING THIS FIRST
+// ═══════════════════════════════════════════════════════════════════════
+// MFA secrets MUST be stored as plaintext base32 (16 chars: A-Z 2-7)
+// NEVER use encrypt() from encryption.ts — it broke production before.
+// The encrypt function is for cloud credentials (AWS/Azure keys) ONLY.
+// See skill: dashboard-treda-mfa for full details.
+// ═══════════════════════════════════════════════════════════════════════
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
