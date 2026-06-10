@@ -1,9 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════
 // WARNING: DO NOT MODIFY MFA SECRET STORAGE WITHOUT READING THIS FIRST
 // ═══════════════════════════════════════════════════════════════════════
-// MFA secrets MUST be stored as plaintext base32 (16 chars: A-Z 2-7)
-// NEVER use encrypt() from encryption.ts — it broke production before.
-// The encrypt function is for cloud credentials (AWS/Azure keys) ONLY.
+// MFA secrets are stored ENCRYPTED in the database (AES-256-GCM via encryption.ts).
+// Storage format: base64(iv + authTag + encrypted) — produced by encrypt().
+// When reading: call decrypt() to get plaintext base32 (16 chars: A-Z 2-7).
+// NEVER store plaintext base32 directly — it's insecure.
+// NEVER use a different encryption method — it must match encryption.ts.
 // See skill: dashboard-treda-mfa for full details.
 // ═══════════════════════════════════════════════════════════════════════
 import type { FastifyInstance } from "fastify";
@@ -13,6 +15,7 @@ import crypto from "crypto";
 import { prisma } from "../index";
 import { validateBody } from "../middleware/validate";
 import { auditLog } from "../services/audit";
+import { encrypt, decrypt } from "../services/encryption";
 
 const loginSchema = z.object({
   username: z.string(),
@@ -85,6 +88,21 @@ function base32Decode(encoded: string): Buffer {
   return Buffer.from(bytes);
 }
 
+/**
+ * Get plaintext MFA secret from encrypted DB value.
+ * Stored as: encrypt(secret) → base64 string.
+ * Read as:   decrypt(stored) → plaintext base32.
+ */
+function getMfaSecret(encryptedOrPlain: string): string {
+  try {
+    // Try decrypting — if it fails, assume it's already plaintext
+    return decrypt(encryptedOrPlain);
+  } catch {
+    // Not encrypted (legacy or already plaintext) — return as-is
+    return encryptedOrPlain;
+  }
+}
+
 async function verifyTOTP(secret: string, code: string): Promise<boolean> {
   try {
     const key = base32Decode(secret);
@@ -153,12 +171,13 @@ export default async function (fastify: FastifyInstance) {
       return reply.status(401).send({ error: "Credenciales inválidas" });
     }
 
-    // MFA check — secret stored as plaintext base32
+    // MFA check — decrypt secret before verification
     if (user.mfaEnabled && user.mfaSecret) {
       if (!mfaCode) {
         return reply.status(400).send({ error: "MFA requerido", mfaRequired: true });
       }
-      const mfaValid = await verifyTOTP(user.mfaSecret, mfaCode);
+      const plaintextSecret = getMfaSecret(user.mfaSecret);
+      const mfaValid = await verifyTOTP(plaintextSecret, mfaCode);
       if (!mfaValid) {
         await auditLog({ userId: user.id, username: user.username, action: "LOGIN_FAILED", resource: "auth", detail: { reason: "invalid_mfa" }, ip, userAgent });
         return reply.status(401).send({ error: "Código MFA inválido" });
@@ -228,16 +247,18 @@ export default async function (fastify: FastifyInstance) {
     return { success: true, message: "Contraseña actualizada" };
   });
 
-  // ── MFA Setup — generate secret ───────────────────────────
+  // ── MFA Setup — generate secret, store encrypted ──────────
   fastify.post("/mfa/setup", { preHandler: [requireAuth] }, async (request) => {
     const { userId, username } = (request as any).user;
     const secret = generateTOTPSecret();
     const uri = secretToGoogleAuthUri(secret, username);
 
-    // Store as plaintext base32 (NOT encrypted — simpler and more reliable)
-    await prisma.user.update({ where: { id: userId }, data: { mfaSecret: secret } });
+    // ENCRYPT before storing in DB
+    const encryptedSecret = encrypt(secret);
+    await prisma.user.update({ where: { id: userId }, data: { mfaSecret: encryptedSecret } });
     await auditLog({ userId, username, action: "MFA_SETUP_INITIATED", resource: "auth" });
 
+    // Return PLAINTEXT secret for QR code (user needs it to scan)
     return { secret, uri };
   });
 
@@ -249,7 +270,8 @@ export default async function (fastify: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.mfaSecret) return { error: "Primero ejecuta /mfa/setup" };
 
-    const valid = await verifyTOTP(user.mfaSecret, code);
+    const plaintextSecret = getMfaSecret(user.mfaSecret);
+    const valid = await verifyTOTP(plaintextSecret, code);
     if (!valid) return { error: "Código inválido — intenta de nuevo" };
 
     await prisma.user.update({ where: { id: userId }, data: { mfaEnabled: true } });
@@ -266,7 +288,8 @@ export default async function (fastify: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.mfaSecret) return { error: "MFA no está activo" };
 
-    const valid = await verifyTOTP(user.mfaSecret, code);
+    const plaintextSecret = getMfaSecret(user.mfaSecret);
+    const valid = await verifyTOTP(plaintextSecret, code);
     if (!valid) return { error: "Código inválido" };
 
     await prisma.user.update({ where: { id: userId }, data: { mfaEnabled: false, mfaSecret: null } });
