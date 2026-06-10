@@ -598,3 +598,105 @@
   box-shadow: 0 0 20px rgba(0,229,255,0.3), 0 0 40px rgba(59,130,246,0.2);
   transform: translateY(-1px);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   FADE-IN ANIMATION — Page entrance
+   ══════════════════════════════════════════════════════════════ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Staggered children animation */
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.animate-stagger > * {
+  opacity: 0;
+  animation: fade-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EMPTY STATE — Nice empty data placeholder
+   ══════════════════════════════════════════════════════════════ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: hsl(var(--neon-cyan) / 0.05);
+  border: 1px dashed hsl(var(--neon-cyan) / 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Sidebar drawer
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 29;
+    backdrop-filter: blur(4px);
+  }
+  aside {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 30;
+  }
+  aside[data-open="true"] {
+    transform: translateX(0);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABLE ROW TRANSITION — Smooth data load
+   ══════════════════════════════════════════════════════════════ */
+table tbody tr {
+  animation: fade-in 0.2s ease forwards;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GLOW PULSE — Status indicators
+   ══════════════════════════════════════════════════════════════ */
+.glow-green {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 6px rgba(0, 255, 136, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(0, 255, 136, 0.4); }
+}
+
+.glow-red {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(255, 68, 68, 0.4); }
+}
+
+.glow-yellow {
+  animation: pulse-yellow 2s ease-in-out infinite;
+}
+@keyframes pulse-yellow {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(255, 215, 0, 0.4); }
+}

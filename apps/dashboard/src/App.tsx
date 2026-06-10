@@ -13,6 +13,9 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { NoticiasPage } from '@/pages/news/NoticiasPage'
 import { PentestPage } from '@/pages/pentest/PentestPage'
 import { HonchoPage } from '@/pages/honcho/HonchoPage'
+import { AuditLogPage } from '@/pages/audit/AuditLogPage'
+import { HealthPage } from '@/pages/health/HealthPage'
+import { NotFoundPage } from '@/pages/not-found/NotFoundPage'
 import { PermissionsProvider } from '@/lib/permissions'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -48,9 +51,12 @@ function App() {
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
-            <Route path="noticias" element={<NoticiasPage />} />
-            <Route path="pentest" element={<PentestPage />} />
-            <Route path="honcho" element={<HonchoPage />} />
+        <Route path="noticias" element={<NoticiasPage />} />
+        <Route path="pentest" element={<PentestPage />} />
+        <Route path="honcho" element={<HonchoPage />} />
+        <Route path="audit" element={<AuditLogPage />} />
+        <Route path="health" element={<HealthPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   )

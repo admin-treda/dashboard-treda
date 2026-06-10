@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "../index";
 import { validateBody } from "../middleware/validate";
 import { auditLog } from "../services/audit";
@@ -25,7 +26,7 @@ const mfaVerifySchema = z.object({
   code: z.string().length(6),
 });
 
-// Account lockout: track failed attempts per username
+// ── Account lockout ─────────────────────────────────────────
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -60,7 +61,7 @@ function clearFailedAttempts(username: string): void {
   failedAttempts.delete(username.toLowerCase());
 }
 
-// TOTP helpers (RFC 6238 compatible with Google Authenticator)
+// ── TOTP helpers (RFC 6238 — base32 secret, Google Authenticator compatible)
 function generateTOTPSecret(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let secret = "";
@@ -68,23 +69,34 @@ function generateTOTPSecret(): string {
   return secret;
 }
 
-function generateTOTPUri(secret: string, username: string): string {
-  const encoded = secret;
-  return `otpauth://totp/Treda:${username}?secret=${encoded}&issuer=Treda&algorithm=SHA1&digits=6&period=30`;
+function base32Decode(encoded: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = encoded.replace(/[=\s]/g, "").toUpperCase();
+  let bits = "";
+  for (const char of clean) {
+    const val = alphabet.indexOf(char);
+    if (val === -1) continue;
+    bits += val.toString(2).padStart(5, "0");
+  }
+  const bytes = new Uint8Array(Math.floor(bits.length / 8));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+  }
+  return Buffer.from(bytes);
 }
 
 async function verifyTOTP(secret: string, code: string): Promise<boolean> {
-  // Simple TOTP verification - in production use speakeasy or otplib
-  // For now, accept the code if it matches a time-based pattern
-  // This is a simplified version — real implementation needs HMAC-SHA1
   try {
-    const crypto = await import("crypto");
+    const key = base32Decode(secret);
     const epoch = Math.floor(Date.now() / 1000 / 30);
-    // Check current and adjacent windows
+    // Check current and adjacent windows (±1 step = ±30s tolerance)
     for (let offset = -1; offset <= 1; offset++) {
       const time = epoch + offset;
-      const hmac = crypto.createHmac("sha1", Buffer.from(secret, "base64"));
-      hmac.update(Buffer.from(time.toString(16).padStart(16, "0")));
+      const timeBuffer = Buffer.alloc(8);
+      timeBuffer.writeUInt32BE(0, 0);
+      timeBuffer.writeUInt32BE(time, 4);
+      const hmac = crypto.createHmac("sha1", key);
+      hmac.update(timeBuffer);
       const hash = hmac.digest();
       const offset2 = hash[hash.length - 1] & 0x0f;
       const code2 = (
@@ -95,11 +107,12 @@ async function verifyTOTP(secret: string, code: string): Promise<boolean> {
       ) % 1000000;
       if (code2.toString().padStart(6, "0") === code) return true;
     }
-  } catch {}
+  } catch {
+    // Verification failed
+  }
   return false;
 }
 
-// Simple TOTP secret to QR code URL (for authenticator apps)
 function secretToGoogleAuthUri(secret: string, username: string): string {
   return `otpauth://totp/Treda:${username}?secret=${secret}&issuer=Treda`;
 }
@@ -145,7 +158,7 @@ export default async function (fastify: FastifyInstance) {
       return reply.status(401).send({ error: "Credenciales inválidas" });
     }
 
-    // MFA check
+    // MFA check — must decrypt secret before verification
     if (user.mfaEnabled && user.mfaSecret) {
       if (!mfaCode) {
         return reply.status(400).send({ error: "MFA requerido", mfaRequired: true });
@@ -223,7 +236,7 @@ export default async function (fastify: FastifyInstance) {
   });
 
   // MFA Setup — generate secret
-  fastify.post("/mfa/setup", { preHandler: [requireAuth] }, async (request, reply) => {
+  fastify.post("/mfa/setup", { preHandler: [requireAuth] }, async (request) => {
     const { userId, username } = (request as any).user;
     const secret = generateTOTPSecret();
     const uri = secretToGoogleAuthUri(secret, username);
@@ -237,15 +250,15 @@ export default async function (fastify: FastifyInstance) {
   });
 
   // MFA Verify — confirm setup
-  fastify.post("/mfa/verify", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request, reply) => {
+  fastify.post("/mfa/verify", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request) => {
     const { userId, username } = (request as any).user;
     const { code } = request.body as z.infer<typeof mfaVerifySchema>;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.mfaSecret) return reply.status(400).send({ error: "Primero ejecuta /mfa/setup" });
+    if (!user?.mfaSecret) return { error: "Primero ejecuta /mfa/setup" };
 
     const valid = await verifyTOTP(user.mfaSecret, code);
-    if (!valid) return reply.status(401).send({ error: "Código inválido — intenta de nuevo" });
+    if (!valid) return { error: "Código inválido — intenta de nuevo" };
 
     await prisma.user.update({ where: { id: userId }, data: { mfaEnabled: true } });
     await auditLog({ userId, username, action: "MFA_ENABLED", resource: "auth" });
@@ -254,15 +267,15 @@ export default async function (fastify: FastifyInstance) {
   });
 
   // MFA Disable
-  fastify.post("/mfa/disable", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request, reply) => {
+  fastify.post("/mfa/disable", { preHandler: [requireAuth, validateBody(mfaVerifySchema)] }, async (request) => {
     const { userId, username } = (request as any).user;
     const { code } = request.body as z.infer<typeof mfaVerifySchema>;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.mfaSecret) return reply.status(400).send({ error: "MFA no está activo" });
+    if (!user?.mfaSecret) return { error: "MFA no está activo" };
 
     const valid = await verifyTOTP(user.mfaSecret, code);
-    if (!valid) return reply.status(401).send({ error: "Código inválido" });
+    if (!valid) return { error: "Código inválido" };
 
     await prisma.user.update({ where: { id: userId }, data: { mfaEnabled: false, mfaSecret: null } });
     await auditLog({ userId, username, action: "MFA_DISABLED", resource: "auth" });

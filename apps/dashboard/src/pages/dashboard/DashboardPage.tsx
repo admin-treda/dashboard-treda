@@ -111,8 +111,8 @@ export function DashboardPage() {
   ].filter(s => s.value > 0)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+  <div className="space-y-6 animate-fade-in">
+    <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// DASHBOARD</h1>
         {loading && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
@@ -122,7 +122,7 @@ export function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 animate-stagger">
         <SummaryCard title="Cuentas Cloud" value={accounts.length} subtitle={`${accounts.filter((a: any) => a.health === 'healthy').length} saludables`} icon={Cloud} loading={loading} index={0} />
         <SummaryCard title="Eventos Críticos" value={critical} subtitle={`${eventTotal} eventos totales`} icon={ShieldAlert} loading={loading} index={1} />
         <SummaryCard title="Costo Total (Mayo)" value={`$${costTotal.toFixed(2)}`} subtitle={`${Object.keys(byAccount).length} cuentas con costo`} icon={DollarSign} loading={loading} index={2} />

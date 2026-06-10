@@ -15,6 +15,8 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  Activity,
+  History,
 } from 'lucide-react'
 
 export function Sidebar() {
@@ -31,6 +33,8 @@ export function Sidebar() {
     { path: '/notifications', label: 'Notificaciones', icon: Bell, show: perms.canViewDashboard },
     { path: '/noticias', label: 'Noticias', icon: Globe, show: perms.canViewDashboard },
     { path: '/reports', label: 'Informes', icon: FileText, show: perms.canViewReports },
+    { path: '/health', label: 'Salud', icon: Activity, show: perms.canViewDashboard },
+    { path: '/audit', label: 'Auditoría', icon: History, show: perms.role === 'admin' },
     { path: '/settings', label: 'Configuración', icon: Settings, show: perms.canManageUsers || perms.canConfig },
     { path: '/honcho', label: 'Honcho', icon: Brain, show: true },
   ].filter(item => item.show)

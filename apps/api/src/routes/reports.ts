@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../index";
 import { requireRole } from "../middleware/auth";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate";
-import { generateReportData } from "../services/report";
+import { generateReportData, generateReportHTML } from "../services/report";
 
 const createSchema = z.object({
   type: z.enum(["DAILY", "WEEKLY"]),
@@ -23,6 +23,7 @@ const paramsSchema = z.object({
 });
 
 export default async function reportRoutes(fastify: FastifyInstance): Promise<void> {
+  // ─── LIST REPORTS ──────────────────────────────────────────
   fastify.get("/", { preHandler: [requireRole("admin", "viewer"), validateQuery(querySchema)] }, async (request) => {
     const q = request.query as z.infer<typeof querySchema>;
     const page = Number(q.page);
@@ -38,119 +39,79 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     return { data: reports, meta: { page, limit, total, pages: Math.ceil(total / limit) } };
   });
 
+  // ─── PREVIEW (HTML) ───────────────────────────────────────
+  fastify.get("/:id/preview", { preHandler: [validateParams(paramsSchema)] }, async (request, reply) => {
+    const { id } = request.params as z.infer<typeof paramsSchema>;
+    // Support token from query param (for new-tab opening) or Bearer header
+    const q = request.query as any;
+    const queryToken = q?.token;
+    if (queryToken) {
+      // Set the token in the Authorization header so jwtVerify can find it
+      (request.headers as any).authorization = `Bearer ${queryToken}`;
+    }
+    try {
+      await request.jwtVerify();
+    } catch {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+    const report = await prisma.report.findUnique({ where: { id } });
+    if (!report) return reply.status(404).send({ error: "Report not found" });
+
+    const data = typeof report.data === "string"
+      ? (() => { try { return JSON.parse(report.data); } catch { return {}; } })()
+      : (report.data || {});
+
+    const html = generateReportHTML(data as any, report.type as 'DAILY' | 'WEEKLY');
+    return reply.type("text/html; charset=utf-8").send(html);
+  });
+
+  // ─── DOWNLOAD PDF ─────────────────────────────────────────
   // Download route must be BEFORE /:id to avoid "download" being matched as an id
   fastify.get("/:id/download", { preHandler: [requireRole("admin", "viewer"), validateParams(paramsSchema)] }, async (request, reply) => {
     const { id } = request.params as z.infer<typeof paramsSchema>;
     const report = await prisma.report.findUnique({ where: { id } });
     if (!report) return reply.status(404).send({ error: "Report not found" });
 
-    const data = typeof report.data === "string" ? (() => { try { return JSON.parse(report.data); } catch { return {}; } })() : report.data || {};
-    const s = data.summary || {};
-    const lines = [
-      "╔═══════════════════════════════════════════════════╗",
-      "║        HERMES ALLEN - INFORME DE MONITOREO        ║",
-      "╚═══════════════════════════════════════════════════╝",
-      "",
-      `  Tipo:       ${report.type === "DAILY" ? "Diario" : "Semanal"}`,
-      `  Generado:   ${new Date(report.generatedAt).toLocaleString("es-CO", { timeZone: "America/Bogota" })}`,
-      `  Periodo:    ${data.periodStart || "N/A"} - ${data.periodEnd || "N/A"}`,
-      "",
-      "═══════════════════════════════════════════════════════",
-      "              RESUMEN GENERAL",
-      "═══════════════════════════════════════════════════════",
-      "",
-      `  Cuentas monitoreadas:  ${s.accounts || 0}`,
-      `    Saludables:          ${s.accountsHealthy || 0}`,
-      `    Advertencia:         ${s.accountsWarning || 0}`,
-      `    Críticas:            ${s.accountsCritical || 0}`,
-      "",
-      `  Eventos de seguridad:  ${s.events || 0}`,
-      `    Críticos:            ${s.critical || 0}`,
-      `    Altos:               ${s.high || 0}`,
-      `    Medios:              ${s.medium || 0}`,
-      `    Bajos:               ${s.low || 0}`,
-      "",
-      `  Costos del período:    $${(s.totalCost || 0).toFixed(2)}`,
-      `  Alertas activas:       ${s.alertsActive || 0}`,
-      "",
-    ];
+    const data = typeof report.data === "string"
+      ? (() => { try { return JSON.parse(report.data); } catch { return {}; } })()
+      : (report.data || {});
 
-    // Costs by account
-    if (data.byAccount && Object.keys(data.byAccount).length > 0) {
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("              COSTOS POR CUENTA");
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("");
-      const sorted = Object.entries(data.byAccount).sort((a: any, b: any) => b[1] - a[1]);
-      for (const [acct, amt] of sorted) {
-        const pct = s.totalCost > 0 ? ((Number(amt) / s.totalCost) * 100).toFixed(1) : "0.0";
-        lines.push(`  ${acct.padEnd(30)} $${Number(amt).toFixed(2).padStart(8)}  ${pct}%`);
-      }
-      lines.push("");
+    const html = generateReportHTML(data as any, report.type as 'DAILY' | 'WEEKLY');
+
+    try {
+      const puppeteer = require("puppeteer");
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
+      await new Promise(r => setTimeout(r, 2000));
+      const pdf = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: { top: "10mm", bottom: "15mm", left: "10mm", right: "10mm" },
+        displayHeaderFooter: true,
+        headerTemplate: '<div style="font-size:8px;color:#556677;width:100%;text-align:center;margin-top:5mm;font-family:monospace;">Treda Solutions — Dashboard de Seguridad y Costos</div>',
+        footerTemplate: '<div style="font-size:8px;color:#556677;width:100%;text-align:center;margin-bottom:5mm;font-family:monospace;">Página <span class="pageNumber"></span> de <span class="totalPages"></span> — Generado: ' + new Date().toLocaleDateString('es-CO') + '</div>',
+      });
+      await browser.close();
+
+      const typeName = report.type === "DAILY" ? "diario" : "semanal";
+      const dateStr = new Date(report.generatedAt).toISOString().slice(0, 10);
+      reply.header("Content-Type", "application/pdf");
+      reply.header("Content-Disposition", `attachment; filename="treda-informe-${typeName}-${dateStr}.pdf"`);
+      return reply.send(pdf);
+    } catch (err: any) {
+      console.error("[Report] PDF generation failed:", err.message);
+      // Fallback: send HTML
+      reply.header("Content-Type", "text/html; charset=utf-8");
+      reply.header("Content-Disposition", `attachment; filename="treda-informe-${report.type.toLowerCase()}-${new Date(report.generatedAt).toISOString().slice(0, 10)}.html"`);
+      return reply.send(html);
     }
-
-    // By provider
-    if (data.byProvider) {
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("              POR PROVEEDOR");
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("");
-      for (const [prov, info] of Object.entries(data.byProvider)) {
-        const i = info as any;
-        lines.push(`  ${prov.padEnd(8)} Eventos: ${String(i.events || 0).padStart(5)}  Costo: $${(i.cost || 0).toFixed(2)}`);
-      }
-      lines.push("");
-    }
-
-    // Top services
-    if (data.services && Object.keys(data.services).length > 0) {
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("              TOP SERVICIOS POR COSTO");
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("");
-      const sorted = Object.entries(data.services).sort((a: any, b: any) => b[1] - a[1]).slice(0, 10);
-      for (const [svc, amt] of sorted) {
-        const pct = s.totalCost > 0 ? ((Number(amt) / s.totalCost) * 100).toFixed(1) : "0.0";
-        lines.push(`  ${(svc.length > 45 ? svc.slice(0, 42) + "..." : svc).padEnd(48)} $${Number(amt).toFixed(2).padStart(8)}  ${pct}%`);
-      }
-      lines.push("");
-    }
-
-    // Event timeline
-    if (data.eventTimeline && Object.keys(data.eventTimeline).length > 0) {
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("              EVENTOS ÚLTIMOS 7 DÍAS");
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("");
-      for (const [day, cnt] of Object.entries(data.eventTimeline)) {
-        const bar = "█".repeat(Math.min(Number(cnt), 40));
-        lines.push(`  ${day}  ${String(cnt).padStart(4)}  ${bar}`);
-      }
-      lines.push("");
-    }
-
-    // Top events
-    if (data.topEvents && data.topEvents.length > 0) {
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("              ÚLTIMOS EVENTOS");
-      lines.push("═══════════════════════════════════════════════════════");
-      lines.push("");
-      for (const evt of data.topEvents.slice(0, 5)) {
-        const sev = (evt.severity || "?").padEnd(8);
-        const desc = (evt.description || "").slice(0, 60);
-        lines.push(`  [${sev}] ${desc}`);
-      }
-      lines.push("");
-    }
-
-    lines.push("═══════════════════════════════════════════════════════");
-    lines.push(`  Generado automáticamente por Hermes Allen`);
-    lines.push(`  ${new Date().toISOString()}`);
-    lines.push("═══════════════════════════════════════════════════════");
-
-    return reply.type("text/plain; charset=utf-8").send(lines.join("\n"));
   });
 
+  // ─── GET SINGLE REPORT ────────────────────────────────────
   fastify.get("/:id", { preHandler: [requireRole("admin", "viewer"), validateParams(paramsSchema)] }, async (request) => {
     const { id } = request.params as z.infer<typeof paramsSchema>;
     const report = await prisma.report.findUnique({ where: { id } });
@@ -162,16 +123,17 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     return { report };
   });
 
+  // ─── GENERATE REPORT ──────────────────────────────────────
   fastify.post("/", { preHandler: [requireRole("admin"), validateBody(createSchema)] }, async (request, reply) => {
     const body = request.body as z.infer<typeof createSchema>;
-    console.log('[REPORT] body:', JSON.stringify(body));
+    console.log('[REPORT] Generating:', body.type);
     try {
-      const data = await generateReportData();
+      const data = await generateReportData(body.type as 'DAILY' | 'WEEKLY');
       const report = await prisma.report.create({
         data: {
           type: body.type,
           status: "completed",
-          data: data,  // Prisma schema is Json type, pass object directly
+          data: data as any,
           generatedAt: new Date(),
           periodStart: body.periodStart ? new Date(body.periodStart) : undefined,
           periodEnd: body.periodEnd ? new Date(body.periodEnd) : undefined,
@@ -181,7 +143,6 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     } catch (e: any) {
       console.error('[REPORT ERROR]', e);
       const msg = e?.message || String(e);
-      // Include full error for debugging
       if (e?.code === 'P2000' || e?.code === 'P2001' || e?.code === 'P2010') {
         return reply.status(500).send({ error: msg.slice(0, 300) });
       }
@@ -189,6 +150,7 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     }
   });
 
+  // ─── DELETE REPORT ────────────────────────────────────────
   fastify.delete("/:id", { preHandler: [requireRole("admin"), validateParams(paramsSchema)] }, async (request, reply) => {
     const { id } = request.params as z.infer<typeof paramsSchema>;
     const report = await prisma.report.findUnique({ where: { id } });
@@ -197,7 +159,7 @@ export default async function reportRoutes(fastify: FastifyInstance): Promise<vo
     return reply.status(204).send();
   });
 
-  // Bulk delete reports
+  // ─── BULK DELETE REPORTS ──────────────────────────────────
   fastify.post("/bulk-delete", { preHandler: [requireRole("admin")] }, async (request, reply) => {
     const { ids } = request.body as { ids?: string[] };
     if (!ids || !Array.isArray(ids) || ids.length === 0) {

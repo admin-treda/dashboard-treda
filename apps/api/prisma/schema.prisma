@@ -160,6 +160,20 @@ enum ReportStatus {
   failed
 }
 
+model ReportDelivery {
+  id            String   @id @default(uuid())
+  enabled       Boolean  @default(false)
+  channelIds    Json     @default("[]") @map("channel_ids")
+  schedule      String   @default("0 8 * * *")
+  includePdf    Boolean  @default(true) @map("include_pdf")
+  reportType    String   @default("DAILY") @map("report_type")
+  lastSentAt    DateTime? @map("last_sent_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("report_delivery")
+}
+
 model News {
   id          String   @id @default(uuid())
   title       String

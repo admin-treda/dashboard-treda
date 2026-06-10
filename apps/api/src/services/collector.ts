@@ -1,27 +1,27 @@
 import { prisma } from '../index';
-import { classifyEvent } from './rules';
-import { dispatchNotifications, dispatchCostAlert } from './notifier';
 import { setCollectResult } from './collector-state';
-import { decrypt } from './encryption';
-
-// ─── AWS ──────────────────────────────────────────────────────────
+import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { CloudTrailClient, LookupEventsCommand } from '@aws-sdk/client-cloudtrail';
 import { CostExplorerClient, GetCostAndUsageCommand } from '@aws-sdk/client-cost-explorer';
+import { decrypt } from './encryption';
 
-async function collectAWS(account: { id: string; credentials: any; region?: string }): Promise<{ events: number }> {
+// ─── Credential helpers ─────────────────────────────────────
+function decryptCreds(account: { credentials: any }): any {
   const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
-  let creds: any;
   try {
-    creds = JSON.parse(decrypt(credsRaw));
+    return JSON.parse(decrypt(credsRaw));
   } catch {
-    creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
+    return typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
   }
+}
+
+// ─── AWS Event Collection ───────────────────────────────────
+async function collectAWS(account: { id: string; credentials: any; region?: string }): Promise<{ events: number }> {
+  const creds = decryptCreds(account);
   const region = account.region || 'us-east-1';
   let events = 0;
-  const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
 
   try {
-    // ── CloudTrail Events ──
     const trail = new CloudTrailClient({
       region,
       credentials: { accessKeyId: creds.accessKeyId || '', secretAccessKey: creds.secretAccessKey || '' },
@@ -50,7 +50,6 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
         const username = evt.Username || 'N/A';
         const resources = evt.Resources?.map((r: any) => r.ResourceName).filter(Boolean).join(', ') || '';
 
-        // Map AWS event names to our severity system
         let severity: string = 'LOW';
         let eventType: string = 'CONFIG_CHANGE';
         const name = eventName.toUpperCase();
@@ -65,7 +64,7 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
           severity = 'LOW'; eventType = 'LOGIN_SUCCESS';
         }
 
-        // Check if event already exists (dedup by time + event name)
+        // Dedup by time + event name
         const exists = await prisma.event.findFirst({
           where: { accountId: account.id, type: eventType, createdAt: eventTime, description: eventName },
         });
@@ -92,19 +91,13 @@ async function collectAWS(account: { id: string; credentials: any; region?: stri
     }
   }
 
-  await prisma.account.update({ where: { id: account.id }, data: { health: 'healthy', status: 'connected' } });
+  await prisma.account.update({ where: { id: account.id }, data: { health: 'healthy' } });
   return { events };
 }
 
-// ─── AWS Cost Collection (separada del polling de eventos) ──────
+// ─── AWS Cost Collection ────────────────────────────────────
 async function collectCostsForAccount(account: { id: string; credentials: any; region?: string }): Promise<{ services: number; error?: string }> {
-  const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
-  let creds: any;
-  try {
-    creds = JSON.parse(decrypt(credsRaw));
-  } catch {
-    creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
-  }
+  const creds = decryptCreds(account);
   const region = account.region || 'us-east-1';
   let services = 0;
 
@@ -178,23 +171,15 @@ export async function collectAllCosts(): Promise<{ accounts: number; categories:
   return { accounts: accounts.length, categories: totalCategories };
 }
 
-// ─── Azure ──────────────────────────────────────────────────────────
+// ─── Azure Event Collection ─────────────────────────────────
 async function collectAzure(account: { id: string; credentials: any }): Promise<{ events: number }> {
   let events = 0;
-  const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
   try {
-    const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
-    let creds: any;
-    try {
-      creds = JSON.parse(decrypt(credsRaw));
-    } catch {
-      creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
-    }
+    const creds = decryptCreds(account);
     const { tenantId, clientId, clientSecret, subscriptionId } = creds;
 
     if (!tenantId || !clientId || !clientSecret || !subscriptionId) return { events: 0 };
 
-    // Azure REST API for Activity Logs
     const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
     const tokenResp = await fetch(tokenUrl, {
       method: 'POST',
@@ -217,7 +202,7 @@ async function collectAzure(account: { id: string; credentials: any }): Promise<
 
     const filter = lastEvent
       ? `eventTimestamp ge ${lastEvent.createdAt.toISOString()}`
-      : `eventTimestamp ge ${new Date(Date.now() - 7*86400000).toISOString()}`;
+      : `eventTimestamp ge ${new Date(Date.now() - 7 * 86400000).toISOString()}`;
 
     const activityUrl = `https://management.azure.com/subscriptions/${subscriptionId}/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$filter=${encodeURIComponent(filter)}&$top=50`;
     const activityResp = await fetch(activityUrl, {
@@ -271,18 +256,11 @@ async function collectAzure(account: { id: string; credentials: any }): Promise<
   return { events };
 }
 
-// ─── M365 ──────────────────────────────────────────────────────────
+// ─── M365 Event Collection ──────────────────────────────────
 async function collectM365(account: { id: string; credentials: any }): Promise<{ events: number }> {
   let events = 0;
-  const createdEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
   try {
-    const credsRaw = typeof account.credentials === 'string' ? account.credentials : JSON.stringify(account.credentials);
-    let creds: any;
-    try {
-      creds = JSON.parse(decrypt(credsRaw));
-    } catch {
-      creds = typeof account.credentials === 'string' ? JSON.parse(account.credentials) : account.credentials;
-    }
+    const creds = decryptCreds(account);
     const { tenantId, clientId, clientSecret } = creds;
     if (!tenantId || !clientId || !clientSecret) return { events: 0 };
 
@@ -353,9 +331,8 @@ async function collectM365(account: { id: string; credentials: any }): Promise<{
   return { events };
 }
 
-// ─── Main Collector ──────────────────────────────────────────────
+// ─── Main Collector ─────────────────────────────────────────
 export async function collectAllAccounts(): Promise<{ accounts: number; totalEvents: number }> {
-  const allEvents: { severity: string; type: string; description: string; accountId: string }[] = [];
   const accounts = await prisma.account.findMany({ where: { status: 'active' } });
   let totalEvents = 0;
 
@@ -383,16 +360,18 @@ export async function collectAllAccounts(): Promise<{ accounts: number; totalEve
   return { accounts: accounts.length, totalEvents };
 }
 
-// ─── Start Background Polling ──────────────────────────────────
+// ─── Background Polling ─────────────────────────────────────
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startPolling(intervalMinutes: number = 20) {
   if (pollInterval) clearInterval(pollInterval);
-  
+
   // Run immediately on start
   collectAllAccounts().then(r => {
-      setCollectResult(r);
+    setCollectResult(r);
     console.log(`[Collector] Initial run: ${r.accounts} accounts, ${r.totalEvents} new events`);
+  }).catch(err => {
+    console.error('[Collector] Initial run error:', err.message);
   });
 
   pollInterval = setInterval(async () => {
