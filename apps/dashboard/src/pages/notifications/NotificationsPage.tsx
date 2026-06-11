@@ -13,15 +13,17 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Mail, MessageSquare, Trash2, TestTube2 } from 'lucide-react'
+import { Mail, MessageSquare, Trash2, TestTube2, Hash, Webhook } from 'lucide-react'
 
 export function NotificationsPage() {
   const [channels, setChannels] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [openDialog, setOpenDialog] = useState<'smtp' | 'telegram' | null>(null)
+  const [openDialog, setOpenDialog] = useState<'smtp' | 'telegram' | 'slack' | 'discord' | null>(null)
   const [editingChannel, setEditingChannel] = useState<any>(null)
   const [smtpForm, setSmtpForm] = useState({ name: '', host: 'smtp-relay.gmail.com', port: '587', auth: false, user: '', pass: '', from: '', to: '' })
   const [telegramForm, setTelegramForm] = useState({ name: '', botToken: '', chatId: '' })
+  const [slackForm, setSlackForm] = useState({ name: '', webhookUrl: '' })
+  const [discordForm, setDiscordForm] = useState({ name: '', webhookUrl: '' })
   const [saving, setSaving] = useState(false)
 
   const fetchChannels = async () => {
@@ -48,6 +50,16 @@ export function NotificationsPage() {
   const editChannel = (ch: any) => {
     const cfg = typeof ch.config === 'string' ? JSON.parse(ch.config) : (ch.config || {})
     setEditingChannel(ch)
+    if (ch.type === 'SLACK') {
+      setSlackForm({ name: ch.name, webhookUrl: cfg.webhookUrl || '' })
+      setOpenDialog('slack')
+      return
+    }
+    if (ch.type === 'DISCORD') {
+      setDiscordForm({ name: ch.name, webhookUrl: cfg.webhookUrl || '' })
+      setOpenDialog('discord')
+      return
+    }
     if (ch.type === 'SMTP') {
       setSmtpForm({
         name: ch.name,
@@ -116,6 +128,30 @@ export function NotificationsPage() {
     finally { setSaving(false) }
   }
 
+  const handleSaveSlack = async () => {
+    if (!slackForm.name || !slackForm.webhookUrl) { toast.error('Completa todos los campos'); return }
+    setSaving(true)
+    try {
+      const payload = { type: 'SLACK', name: slackForm.name, config: { webhookUrl: slackForm.webhookUrl } }
+      if (editingChannel) { await api.patch('/notifications/' + editingChannel.id, payload); toast.success('Canal actualizado') }
+      else { await api.post('/notifications', payload); toast.success('Canal Slack creado') }
+      setOpenDialog(null); setEditingChannel(null); setSlackForm({ name: '', webhookUrl: '' }); fetchChannels()
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Error') }
+    finally { setSaving(false) }
+  }
+
+  const handleSaveDiscord = async () => {
+    if (!discordForm.name || !discordForm.webhookUrl) { toast.error('Completa todos los campos'); return }
+    setSaving(true)
+    try {
+      const payload = { type: 'DISCORD', name: discordForm.name, config: { webhookUrl: discordForm.webhookUrl } }
+      if (editingChannel) { await api.patch('/notifications/' + editingChannel.id, payload); toast.success('Canal actualizado') }
+      else { await api.post('/notifications', payload); toast.success('Canal Discord creado') }
+      setOpenDialog(null); setEditingChannel(null); setDiscordForm({ name: '', webhookUrl: '' }); fetchChannels()
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Error') }
+    finally { setSaving(false) }
+  }
+
   const testChannel = async (id: string) => {
     try {
       await api.get(`/notifications/${id}/test`)
@@ -151,6 +187,8 @@ export function NotificationsPage() {
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={() => setOpenDialog('smtp')}><Mail className="h-4 w-4" /> SMTP</Button>
           <Button variant="outline" className="gap-2" onClick={() => setOpenDialog('telegram')}><MessageSquare className="h-4 w-4" /> Telegram</Button>
+          <Button variant="outline" className="gap-2" onClick={() => setOpenDialog('slack')}><Hash className="h-4 w-4" /> Slack</Button>
+          <Button variant="outline" className="gap-2" onClick={() => setOpenDialog('discord')}><Webhook className="h-4 w-4" /> Discord</Button>
         </div>
       </div>
 
@@ -168,7 +206,7 @@ export function NotificationsPage() {
               <Card key={ch.id} className={`glass-card ${!ch.enabled ? 'opacity-50' : ''}`}>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {ch.type === 'SMTP' ? <Mail className="h-5 w-5 text-primary" /> : <MessageSquare className="h-5 w-5 text-sky-500" />}
+                    {ch.type === 'SMTP' ? <Mail className="h-5 w-5 text-primary" /> : ch.type === 'SLACK' ? <Hash className="h-5 w-5 text-[#E01E5A]" /> : ch.type === 'DISCORD' ? <Webhook className="h-5 w-5 text-[#5865F2]" /> : <MessageSquare className="h-5 w-5 text-sky-500" />}
                     <div>
                       <p className="font-medium text-sm">{ch.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -284,6 +322,36 @@ export function NotificationsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Slack Dialog */}
+      <Dialog open={openDialog === 'slack'} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setEditingChannel(null); } }}>
+        <DialogContent className="glass-card max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Hash className="h-5 w-5 text-[#E01E5A]" /> {editingChannel ? 'Editar' : 'Configurar'} Slack</DialogTitle>
+            <DialogDescription>Notificaciones vía webhook de Slack</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Nombre del canal</Label><Input placeholder="Alertas Slack" value={slackForm.name} onChange={e => setSlackForm(p => ({...p, name: e.target.value}))} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Webhook URL</Label><Input placeholder="https://hooks.slack.com/services/..." value={slackForm.webhookUrl} onChange={e => setSlackForm(p => ({...p, webhookUrl: e.target.value}))} className="h-8 text-xs" /></div>
+            <div className="flex justify-end gap-2 pt-2"><Button variant="outline" size="sm" onClick={() => setOpenDialog(null)}>Cancelar</Button><Button size="sm" onClick={handleSaveSlack} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discord Dialog */}
+      <Dialog open={openDialog === 'discord'} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setEditingChannel(null); } }}>
+        <DialogContent className="glass-card max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Webhook className="h-5 w-5 text-[#5865F2]" /> {editingChannel ? 'Editar' : 'Configurar'} Discord</DialogTitle>
+            <DialogDescription>Notificaciones vía webhook de Discord</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Nombre del canal</Label><Input placeholder="Alertas Discord" value={discordForm.name} onChange={e => setDiscordForm(p => ({...p, name: e.target.value}))} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Webhook URL</Label><Input placeholder="https://discord.com/api/webhooks/..." value={discordForm.webhookUrl} onChange={e => setDiscordForm(p => ({...p, webhookUrl: e.target.value}))} className="h-8 text-xs" /></div>
+            <div className="flex justify-end gap-2 pt-2"><Button variant="outline" size="sm" onClick={() => setOpenDialog(null)}>Cancelar</Button><Button size="sm" onClick={handleSaveDiscord} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

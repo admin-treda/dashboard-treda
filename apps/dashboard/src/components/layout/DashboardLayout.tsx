@@ -8,8 +8,9 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export function DashboardLayout() {
-  const { collapsed } = useThemeStore()
+  const { sidebarCollapsed: collapsed } = useThemeStore()
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -25,36 +26,57 @@ export function DashboardLayout() {
     return () => clearInterval(interval)
   }, [])
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [])
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header: sticky at top, full width */}
-      <Header />
+      {/* Header */}
+      <Header onMenuClick={() => setMobileMenuOpen(true)} />
 
       <div className="flex flex-1">
-        {/* Sidebar: fixed left, below header */}
-        <Sidebar />
+        {/* Sidebar */}
+        <Sidebar 
+          mobileOpen={mobileMenuOpen} 
+          onMobileClose={() => setMobileMenuOpen(false)} 
+        />
 
-        {/* Main content: offset by sidebar width */}
+        {/* Main content */}
         <main
           className={cn(
-            'flex-1 transition-all duration-300 pb-8 overflow-x-hidden',
-            collapsed ? 'ml-16' : 'ml-60'
+            'flex-1 transition-all duration-300 pb-10 overflow-x-hidden',
+            // Mobile: full width
+            'ml-0',
+            // Desktop: offset by sidebar
+            collapsed ? 'md:ml-16' : 'md:ml-60'
           )}
         >
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             <Outlet />
           </div>
-          <div className="fixed bottom-0 right-0 z-40 border-t bg-background/80 backdrop-blur-sm"
+          
+          {/* Status bar */}
+          <div className="fixed bottom-0 right-0 z-30 border-t border-border/30 bg-card/80 backdrop-blur-md"
             style={{ left: collapsed ? '4rem' : '16rem' }}>
-            <div className="flex items-center justify-between px-6 py-1.5 text-xs text-foreground/50">
-              <span className="flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 md:px-6 py-1.5 text-[10px] text-text-dim">
+              <span className="flex items-center gap-2 font-mono">
                 <span className="status-dot active" />
-                Dashboard Treda — Dashboard Multi-Cloud
+                <span className="hidden sm:inline">Dashboard Treda</span>
+                <span className="sm:hidden">Treda</span>
+                <span className="text-text-dim/50">·</span>
+                <span className="text-neon-cyan/60">Multi-Cloud</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                {lastUpdated
-                  ? `Última recolección: ${new Date(lastUpdated).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`
-                  : 'Recolector automático cada 20 minutos'}
+              <span className="flex items-center gap-1.5 font-mono">
+                {lastUpdated ? (
+                  <>
+                    <span className="hidden md:inline">Recolectado:</span>
+                    <span>{new Date(lastUpdated).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' })}</span>
+                  </>
+                ) : (
+                  <span className="text-text-dim/60">Auto-refresh 20min</span>
+                )}
               </span>
             </div>
           </div>

@@ -8,15 +8,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(viewer)
-  mfaSecret String?  @map("mfa_secret")
-  mfaEnabled Boolean @default(false) @map("mfa_enabled")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  username   String   @unique
+  name       String
+  email      String   @unique
+  password   String
+  role       Role     @default(viewer)
+  mfaSecret  String?  @map("mfa_secret")
+  mfaEnabled Boolean  @default(false) @map("mfa_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("users")
 }
@@ -161,15 +161,15 @@ enum ReportStatus {
 }
 
 model ReportDelivery {
-  id            String   @id @default(uuid())
-  enabled       Boolean  @default(false)
-  channelIds    Json     @default("[]") @map("channel_ids")
-  schedule      String   @default("0 8 * * *")
-  includePdf    Boolean  @default(true) @map("include_pdf")
-  reportType    String   @default("DAILY") @map("report_type")
-  lastSentAt    DateTime? @map("last_sent_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id         String    @id @default(uuid())
+  enabled    Boolean   @default(false)
+  channelIds Json      @default("[]") @map("channel_ids")
+  schedule   String    @default("0 8 * * *")
+  includePdf Boolean   @default(true) @map("include_pdf")
+  reportType String    @default("DAILY") @map("report_type")
+  lastSentAt DateTime? @map("last_sent_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   @@map("report_delivery")
 }
@@ -231,7 +231,7 @@ model PentestScan {
   wafInfo        Json?      @map("waf_info")
   createdAt      DateTime   @default(now()) @map("created_at")
 
-  results        PentestResult[]
+  results PentestResult[]
 
   @@index([userId])
   @@index([status])
@@ -258,7 +258,7 @@ model PentestResult {
   status      String   @default("open")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  scan        PentestScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scan PentestScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
   @@index([scanId])
   @@index([severity])
@@ -276,33 +276,33 @@ enum ScanStatus {
 }
 
 model PentestTarget {
-  id          String   @id @default(uuid())
-  name        String
-  url         String
-  tags        Json     @default("[]")
-  authType    String?  @default("") @map("auth_type")
-  authValue   String?  @default("") @map("auth_value")
-  notes       String?  @default("")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  tags      Json     @default("[]")
+  authType  String?  @default("") @map("auth_type")
+  authValue String?  @default("") @map("auth_value")
+  notes     String?  @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([name])
   @@map("pentest_targets")
 }
 
 model PentestSchedule {
-  id          String   @id @default(uuid())
-  targetId    String?  @map("target_id")
-  url         String
-  profile     String   @default("balanced")
-  authType    String?  @default("") @map("auth_type")
-  authValue   String?  @default("") @map("auth_value")
-  cron        String
-  enabled     Boolean  @default(true)
-  lastRun     DateTime? @map("last_run")
-  nextRun     DateTime? @map("next_run")
-  userId      String?  @map("user_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  targetId  String?   @map("target_id")
+  url       String
+  profile   String    @default("balanced")
+  authType  String?   @default("") @map("auth_type")
+  authValue String?   @default("") @map("auth_value")
+  cron      String
+  enabled   Boolean   @default(true)
+  lastRun   DateTime? @map("last_run")
+  nextRun   DateTime? @map("next_run")
+  userId    String?   @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([enabled])
   @@index([nextRun])
@@ -338,4 +338,402 @@ model PentestAuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("pentest_audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISO 27001:2022 - Sistema de Gestión de Seguridad de la Información
+// ═══════════════════════════════════════════════════════════════
+
+model ISMSDashboard {
+  id                   String    @id @default(uuid())
+  businessUnitId       String?   @map("business_unit_id")
+  scope                String    @default("")
+  context              Json      @default("{}")
+  interestedParties    Json      @default("[]") @map("interested_parties")
+  policyUrl            String?   @map("policy_url")
+  policyVersion        String?   @map("policy_version")
+  policyApprovedAt     DateTime? @map("policy_approved_at")
+  policyApprovedBy     String?   @map("policy_approved_by")
+  overallCompliance    Float     @default(0) @map("overall_compliance")
+  lastManagementReview DateTime? @map("last_management_review")
+  nextAuditDate        DateTime? @map("next_audit_date")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@index([businessUnitId])
+  @@map("isms_dashboard")
+}
+
+model Risk {
+  id              String          @id @default(uuid())
+  businessUnitId  String?         @map("business_unit_id")
+  title           String
+  description     String          @default("")
+  category        RiskCategory
+  assetId         String?         @map("asset_id")
+  likelihood      Int             @default(1) // 1-5
+  impact          Int             @default(1) // 1-5
+  riskScore       Int             @default(0) @map("risk_score")
+  riskLevel       RiskLevel       @default(LOW) @map("risk_level")
+  treatmentOption TreatmentOption @default(MITIGATE) @map("treatment_option")
+  treatmentPlan   String?         @map("treatment_plan")
+  residualRisk    Int?            @map("residual_risk")
+  status          RiskStatus      @default(OPEN)
+  owner           String          @default("")
+  dueDate         DateTime?       @map("due_date")
+  mitigatedAt     DateTime?       @map("mitigated_at")
+  notes           String?         @default("")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@index([businessUnitId])
+  @@index([riskLevel])
+  @@index([status])
+  @@map("risks")
+}
+
+enum RiskCategory {
+  STRATEGIC
+  OPERATIONAL
+  FINANCIAL
+  COMPLIANCE
+  TECHNICAL
+  PHYSICAL
+  HUMAN
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TreatmentOption {
+  MITIGATE
+  TRANSFER
+  ACCEPT
+  AVOID
+}
+
+enum RiskStatus {
+  OPEN
+  IN_PROGRESS
+  MITIGATED
+  ACCEPTED
+  TRANSFERRED
+  CLOSED
+}
+
+model SoAControl {
+  id                   String               @id @default(uuid())
+  businessUnitId       String?              @map("business_unit_id")
+  controlId            String               @map("control_id")
+  title                String
+  description          String               @default("")
+  category             SoACategory
+  applicable           Boolean              @default(true)
+  justification        String?
+  implementationStatus ImplementationStatus @default(NOT_IMPLEMENTED) @map("implementation_status")
+  implementationNotes  String?              @map("implementation_notes")
+  owner                String?
+  evidenceIds          Json                 @default("[]") @map("evidence_ids")
+  relatedModule        String?              @map("related_module")
+  lastReviewed         DateTime?            @map("last_reviewed")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@unique([controlId, businessUnitId])
+  @@index([businessUnitId])
+  @@index([category])
+  @@index([implementationStatus])
+  @@map("soa_controls")
+}
+
+enum SoACategory {
+  A5_ORGANIZATIONAL
+  A6_PEOPLE
+  A7_PHYSICAL
+  A8_TECHNOLOGICAL
+}
+
+enum ImplementationStatus {
+  NOT_IMPLEMENTED
+  PARTIAL
+  IMPLEMENTED
+  NOT_APPLICABLE
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISO 27001:2022 - Gestión de Documentos
+// ═══════════════════════════════════════════════════════════════
+
+model Document {
+  id             String           @id @default(uuid())
+  businessUnitId String?          @map("business_unit_id")
+  title          String
+  type           DocumentType
+  category       DocumentCategory
+  content        String?          @db.Text
+  fileUrl        String?          @map("file_url")
+  fileSize       Int?             @map("file_size")
+  version        String           @default("1.0")
+  status         DocumentStatus   @default(DRAFT)
+  owner          String?
+  reviewers      Json             @default("[]")
+  approvedBy     String?          @map("approved_by")
+  approvedAt     DateTime?        @map("approved_at")
+  nextReviewDate DateTime?        @map("next_review_date")
+  tags           Json             @default("[]")
+  relatedSoA     Json             @default("[]") @map("related_soa")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@index([businessUnitId])
+  @@index([type])
+  @@index([status])
+  @@index([category])
+  @@map("documents")
+}
+
+enum DocumentType {
+  POLICY
+  PROCEDURE
+  WORK_INSTRUCTION
+  RECORD
+  PLAN
+  REPORT
+  MANUAL
+}
+
+enum DocumentCategory {
+  INFORMATION_SECURITY
+  ACCESS_CONTROL
+  CRYPTOGRAPHY
+  PHYSICAL_SECURITY
+  OPERATIONS_SECURITY
+  COMMUNICATIONS_SECURITY
+  SYSTEM_ACQUISITION
+  SUPPLIER_RELATIONSHIPS
+  INCIDENT_MANAGEMENT
+  BUSINESS_CONTINUITY
+  COMPLIANCE
+  HR_SECURITY
+  ASSET_MANAGEMENT
+  RISK_MANAGEMENT
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  OBSOLETE
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISO 27001:2022 - Capacitación y Concientización (A.6.3)
+// ═══════════════════════════════════════════════════════════════
+
+model TrainingCourse {
+  id              String           @id @default(uuid())
+  title           String
+  description     String           @default("")
+  category        TrainingCategory
+  durationMinutes Int              @map("duration_minutes")
+  required        Boolean          @default(false)
+  frequency       String? // annual, quarterly, monthly
+  passingScore    Int              @default(80) @map("passing_score")
+  soaControls     Json             @default("[]") @map("soa_controls")
+  status          CourseStatus     @default(ACTIVE)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  enrollments TrainingEnrollment[]
+
+  @@index([category])
+  @@map("training_courses")
+}
+
+enum TrainingCategory {
+  SECURITY_AWARENESS
+  PHISHING
+  PASSWORD_SECURITY
+  DATA_PROTECTION
+  INCIDENT_RESPONSE
+  COMPLIANCE
+  ROLE_SPECIFIC
+  ONBOARDING
+  CRYPTOGRAPHY
+  ACCESS_CONTROL
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model TrainingEnrollment {
+  id             String           @id @default(uuid())
+  courseId       String           @map("course_id")
+  userId         String           @map("user_id")
+  userName       String           @default("") @map("user_name")
+  status         EnrollmentStatus @default(ENROLLED)
+  enrolledAt     DateTime         @default(now()) @map("enrolled_at")
+  startedAt      DateTime?        @map("started_at")
+  completedAt    DateTime?        @map("completed_at")
+  score          Int?
+  certificateUrl String?          @map("certificate_url")
+  notes          String?          @default("")
+
+  course TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@index([status])
+  @@map("training_enrollments")
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISO 27001:2022 - Auditorías Internas (9.2)
+// ═══════════════════════════════════════════════════════════════
+
+model InternalAudit {
+  id              String      @id @default(uuid())
+  businessUnitId  String?     @map("business_unit_id")
+  title           String
+  description     String      @default("")
+  auditType       AuditType   @map("audit_type")
+  scope           String      @default("")
+  criteria        String?     @map("audit_criteria")
+  auditorName     String      @map("auditor_name")
+  auditDate       DateTime    @map("audit_date")
+  status          AuditStatus @default(PLANNED)
+  findings        Json        @default("[]")
+  nonConformities Int         @default(0) @map("non_conformities")
+  opportunities   Int         @default(0)
+  positives       Int         @default(0)
+  reportUrl       String?     @map("report_url")
+  nextAuditDate   DateTime?   @map("next_audit_date")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@index([businessUnitId])
+  @@index([status])
+  @@index([auditDate])
+  @@map("internal_audits")
+}
+
+enum AuditType {
+  FULL_ISO27001
+  PARTIAL
+  SURVEILLANCE
+  FOLLOW_UP
+  PRE_CERTIFICATION
+}
+
+enum AuditStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  FOLLOW_UP
+  CLOSED
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ISO 27001:2022 - Acciones Correctivas / CAPA (10.2)
+// ═══════════════════════════════════════════════════════════════
+
+model CAPA {
+  id               String     @id @default(uuid())
+  businessUnitId   String?    @map("business_unit_id")
+  title            String
+  description      String     @default("")
+  type             CAPAType
+  source           String     @default("")
+  sourceId         String?    @map("source_id")
+  rootCause        String?    @map("root_cause")
+  correctiveAction String?    @map("corrective_action")
+  preventiveAction String?    @map("preventive_action")
+  owner            String
+  dueDate          DateTime?  @map("due_date")
+  status           CAPAStatus @default(OPEN)
+  effectiveness    String?
+  verifiedBy       String?    @map("verified_by")
+  verifiedAt       DateTime?  @map("verified_at")
+  closedAt         DateTime?  @map("closed_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@index([businessUnitId])
+  @@index([type])
+  @@index([status])
+  @@index([dueDate])
+  @@map("capa")
+}
+
+enum CAPAType {
+  CORRECTIVE
+  PREVENTIVE
+  IMPROVEMENT
+}
+
+enum CAPAStatus {
+  OPEN
+  IN_PROGRESS
+  IMPLEMENTED
+  VERIFIED
+  CLOSED
+  REJECTED
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UNIDADES DE NEGOCIO — Multi-branch ISO 27001
+// ═══════════════════════════════════════════════════════════════
+
+model BusinessUnit {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  industry    String?  @default("")
+  logo        String?
+  status      BUStatus @default(ACTIVE)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  isms        ISMSDashboard[]
+  risks       Risk[]
+  soaControls SoAControl[]
+  documents   Document[]
+  audits      InternalAudit[]
+  capas       CAPA[]
+
+  @@map("business_units")
+}
+
+enum BUStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
 }

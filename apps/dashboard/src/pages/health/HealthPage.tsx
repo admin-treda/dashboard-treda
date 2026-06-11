@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import {
-  Activity, Server, Database, Clock, RefreshCw, CheckCircle2,
-  XCircle, AlertTriangle, Zap, Globe, Shield, Cpu, HardDrive,
-  Wifi, WifiOff, TrendingUp,
+  Activity, Server, Database,  RefreshCw, CheckCircle2,
+  XCircle, AlertTriangle, Zap, Globe, Shield, Cpu,
+  TrendingUp,
 } from 'lucide-react'
 
 interface HealthData {
@@ -22,20 +22,24 @@ export function HealthPage() {
   const [loading, setLoading] = useState(true)
   const [health, setHealth] = useState<HealthData | null>(null)
   const [collecting, setCollecting] = useState(false)
+  const [systemInfo, setSystemInfo] = useState<any>(null)
 
   const fetchHealth = async () => {
     try {
       setLoading(true)
-      const [healthRes, pollRes, acctRes] = await Promise.all([
+      const [healthRes, pollRes, acctRes, sysRes] = await Promise.all([
         api.get('/../../health').catch(() => ({ data: { status: 'error' } })),
         api.get('/poll-status').catch(() => ({ data: {} })),
         api.get('/accounts').catch(() => ({ data: { accounts: [] } })),
+        api.get('/system').catch(() => ({ data: null })),
       ])
 
       const accounts = acctRes.data?.accounts || []
       const healthy = accounts.filter((a: any) => a.health === 'healthy').length
       const warning = accounts.filter((a: any) => a.health === 'warning').length
       const critical = accounts.filter((a: any) => a.health === 'critical').length
+
+      setSystemInfo(sysRes?.data || null)
 
       setHealth({
         api: {
@@ -248,6 +252,87 @@ export function HealthPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+      {/* System Resources — REAL DATA from /api/v1/system */}
+      {!loading && systemInfo && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="glass-card border-[#00E5FF]/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#00E5FF] uppercase tracking-widest flex items-center gap-2">
+                <Cpu className="h-4 w-4" /> Recursos del Sistema
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {systemInfo.ram && [
+                { label: 'RAM', used: `${systemInfo.ram.usedGB} GB`, total: `${systemInfo.ram.totalGB} GB`, percent: systemInfo.ram.percent, color: '#00E5FF' },
+                ...(systemInfo.disk ? [{ label: 'Disco', used: `${systemInfo.disk.usedGB} GB`, total: `${systemInfo.disk.totalGB} GB`, percent: systemInfo.disk.percent, color: '#00FF88' }] : []),
+                ...(systemInfo.cpu ? [{ label: 'CPU', used: `${systemInfo.cpu.loadAvg?.[0] || 0} load`, total: `${systemInfo.cpu.cores} cores`, percent: systemInfo.cpu.percent, color: '#FFD700' }] : []),
+              ].map((r: any) => (
+                <div key={r.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-display text-muted-foreground">{r.label}</span>
+                    <span className="font-mono" style={{ color: r.color }}>{r.used} / {r.total}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(r.percent, 100)}%`, backgroundColor: r.color, boxShadow: `0 0 8px ${r.color}40` }} />
+                  </div>
+                </div>
+              ))}
+              {systemInfo.uptime && (
+                <div className="pt-2 border-t border-white/5">
+                  <p className="text-[10px] text-muted-foreground font-display uppercase">Uptime</p>
+                  <p className="text-sm font-mono text-[#00FF88]">{systemInfo.uptime.display}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Security Tools — REAL DATA from filesystem check */}
+          <Card className="glass-card border-[#8B5CF6]/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#8B5CF6] uppercase tracking-widest flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Herramientas de Seguridad
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {systemInfo.tools?.map((t: any) => (
+                <div key={t.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/20 border border-white/5">
+                  <span className="text-xs font-mono">{t.name}</span>
+                  {t.installed ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#00FF88]" />
+                  ) : (
+                    <span className="text-[10px] text-[#FF4444] font-mono">NO INSTALADO</span>
+                  )}
+                </div>
+              ))}
+              {(!systemInfo.tools || systemInfo.tools.length === 0) && (
+                <p className="text-xs text-muted-foreground text-center py-4">No se detectaron herramientas</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* System Info */}
+          <Card className="glass-card border-[#FFD700]/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+                <Server className="h-4 w-4" /> Info del Sistema
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { label: 'Hostname', value: systemInfo.hostname },
+                { label: 'Platform', value: systemInfo.platform },
+                { label: 'Arch', value: systemInfo.arch },
+                { label: 'CPU', value: systemInfo.cpu?.model?.split(' ').slice(0, 3).join(' ') || 'N/A' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between p-2 rounded-lg bg-muted/20 border border-white/5">
+                  <span className="text-[10px] text-muted-foreground font-display uppercase">{item.label}</span>
+                  <span className="text-xs font-mono">{item.value}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

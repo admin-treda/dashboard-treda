@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ExternalLink, Search, RefreshCw, Globe, Newspaper, Shield, Cpu, Bot, AlertTriangle, Trash2, Clock } from 'lucide-react'
+import { ExternalLink, Search, RefreshCw, Newspaper, Shield, Cpu, Bot, AlertTriangle, Trash2, Clock, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface NewsItem {
@@ -42,6 +42,8 @@ export function NoticiasPage() {
   const [search, setSearch] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [summarizing, setSummarizing] = useState(false)
 
   const fetchNews = async () => {
     try {
@@ -121,6 +123,37 @@ export function NoticiasPage() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Buscar en todas las noticias..." className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
+
+      {/* AI Summary */}
+      {allNews.length > 0 && (
+        <Card className="glass-card border-[#8B5CF6]/10">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
+                <span className="text-xs font-display text-[#8B5CF6] uppercase tracking-wider">Resumen AI de Noticias</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={async () => {
+                setSummarizing(true)
+                try {
+                  const topNews = allNews.slice(0, 10).map(n => `${n.title}: ${n.description || ''}`).join('\n')
+                  const res = await api.post('/honcho/chat', {
+                    query: `Resume en 3-4 oraciones los temas más importantes de estas noticias tech:\n${topNews}`,
+                    reasoning_level: 'low'
+                  })
+                  setAiSummary(res.data?.content || 'No se pudo generar el resumen')
+                } catch { setAiSummary('Error al generar resumen — Honcho no disponible') }
+                setSummarizing(false)
+              }} disabled={summarizing} className="gap-2 text-[10px]">
+                {summarizing ? <><span className="spinner" /> Generando...</> : <><Sparkles className="h-3 w-3" /> Generar Resumen</>}
+              </Button>
+            </div>
+            {aiSummary && (
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2 p-3 rounded-lg bg-[#8B5CF6]/5 border border-[#8B5CF6]/10">{aiSummary}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Loading */}
       {loading ? (

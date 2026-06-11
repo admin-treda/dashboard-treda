@@ -19,11 +19,27 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
-  Users, Settings, Plus, Edit3, Trash2, Shield, ShieldCheck, Eye,
+  Users, Settings, Edit3, Trash2, Shield, ShieldCheck, Eye,
   Key, AlertTriangle, CheckCircle2, Lock, UserPlus, ShieldAlert, Copy, Check,
 } from 'lucide-react'
-import { api as apiClient } from '@/lib/api'
-import { QRCodeSVG } from 'qrcode.react'
+import QRCode from 'qrcode'
+
+// QR Code component using qrcode library
+function QRCodeImage({ value, size = 200 }: { value: string; size?: number }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('')
+  
+  useEffect(() => {
+    QRCode.toDataURL(value, { 
+      width: size, 
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' }
+    }).then(setQrDataUrl).catch(console.error)
+  }, [value, size])
+  
+  if (!qrDataUrl) return <div style={{ width: size, height: size }} className="bg-gray-100 animate-pulse rounded" />
+  
+  return <img src={qrDataUrl} alt="QR Code" width={size} height={size} />
+}
 
 // ── Role definitions ────────────────────────────────────────
 interface RoleDef {
@@ -488,10 +504,9 @@ export function SettingsPage() {
                   <div className="rounded-lg bg-[#FFD700]/5 border border-[#FFD700]/20 p-4">
                     <p className="text-xs font-display text-[#FFD700] uppercase tracking-wider mb-3">1. Escanea este QR con Google Authenticator</p>
                     <div className="flex justify-center py-4 bg-white rounded-lg">
-                      <QRCodeSVG
+                      <QRCodeImage 
                         value={mfaUri || `otpauth://totp/Treda:admin?secret=${mfaSecret}&issuer=Treda`}
                         size={200}
-                        level="M"
                       />
                     </div>
                     <div className="mt-3 space-y-2">

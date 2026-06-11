@@ -26,6 +26,16 @@ import settingRoutes from "./routes/settings";
 import pentestRoutes from "./routes/pentest";
 import pentestTargetRoutes from "./routes/pentest-targets";
 import honchoRoutes from "./routes/honcho";
+import vulnRoutes from "./routes/vulnerabilities";
+import complianceRoutes from "./routes/compliance";
+import incidentRoutes from "./routes/incidents";
+import assetRoutes from "./routes/assets";
+import systemRoutes from "./routes/system";
+import { iso27001Routes } from "./routes/iso27001";
+import documentsRoutes from "./routes/documents";
+import trainingRoutes from "./routes/training";
+import auditCAPARoutes from "./routes/audit-capa";
+import businessUnitRoutes from "./routes/business-units";
 
 export const prisma = new PrismaClient({
   log: config.NODE_ENV === "development" ? ["query", "info", "warn", "error"] : ["error"],
@@ -86,6 +96,16 @@ async function main(): Promise<void> {
   await app.register(pentestRoutes, { prefix: "/api/v1/pentest" });
   await app.register(pentestTargetRoutes, { prefix: "/api/v1" });
   await app.register(honchoRoutes, { prefix: "/api/v1/honcho" });
+  await app.register(vulnRoutes, { prefix: "/api/v1/vulnerabilities" });
+  await app.register(complianceRoutes, { prefix: "/api/v1/compliance" });
+  await app.register(incidentRoutes, { prefix: "/api/v1/incidents" });
+  await app.register(assetRoutes, { prefix: "/api/v1/assets" });
+  await app.register(systemRoutes, { prefix: "/api/v1/system" });
+  await app.register(iso27001Routes, { prefix: "/api/v1/iso27001" });
+  await app.register(documentsRoutes, { prefix: "/api/v1/documents" });
+  await app.register(trainingRoutes, { prefix: "/api/v1/training" });
+  await app.register(auditCAPARoutes, { prefix: "/api/v1/audit-capa" });
+  await app.register(businessUnitRoutes, { prefix: "/api/v1/business-units" });
 
   // ── Manual collect endpoint ────────────────────────────────
   app.get("/api/v1/collect", { preHandler: [authenticate] }, async () => {

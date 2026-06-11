@@ -65,7 +65,7 @@ async function sendTelegram(config: any, text: string): Promise<boolean> {
       }),
     });
 
-    const data = await resp.json();
+    const data = await resp.json() as any;
     if (data.ok) {
       console.log("[ReportDelivery] Telegram message sent");
       return true;

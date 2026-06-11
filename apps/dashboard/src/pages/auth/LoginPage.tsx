@@ -18,7 +18,6 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [mfaRequired, setMfaRequired] = useState(false)
   const [mfaCode, setMfaCode] = useState('')
-  const [mfaSecret, setMfaSecret] = useState('') // temp storage for re-login
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +38,6 @@ export function LoginPage() {
       const data = err.response?.data
       if (data?.mfaRequired) {
         setMfaRequired(true)
-        setMfaSecret(data.secret || '')
         toast.info('Código MFA requerido')
       } else {
         toast.error(data?.error || 'Error al iniciar sesión')

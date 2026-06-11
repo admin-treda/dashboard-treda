@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Progress } from '@/components/ui/progress'
+import {} from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -25,8 +25,8 @@ import { toast } from 'sonner'
 import {
   DollarSign, RefreshCw, TrendingUp, TrendingDown,
   ArrowUpRight, ArrowDownRight, ChevronDown, ChevronRight,
-  Wallet, Target, Crown, Zap, Globe, CreditCard,
-  Coins, Landmark, Scale, Lightbulb, Calendar,
+  Target, Crown, Zap, Globe, 
+  Coins, Landmark, Calendar,
   Activity, BarChart3, PieChart as PieIcon, Sparkles,
 } from 'lucide-react'
 import {
@@ -59,20 +59,6 @@ function AnimatedValue({ value, prefix = '$', decimals = 2 }: { value: number, p
   return <>{prefix}{display.toFixed(decimals)}</>
 }
 
-// Glow ring component
-function GlowRing({ percent, color, size = 120, stroke = 8 }: { percent: number, color: string, size?: number, stroke?: number }) {
-  const radius = (size - stroke) / 2
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (Math.min(percent, 100) / 100) * circumference
-  return (
-    <svg width={size} height={size} className="transform -rotate-90">
-      <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-        style={{ filter: `drop-shadow(0 0 6px ${color}50)`, transition: 'stroke-dashoffset 1s ease' }} />
-    </svg>
-  )
-}
 
 export function CostsPage() {
   const [loading, setLoading] = useState(true)
@@ -162,7 +148,6 @@ export function CostsPage() {
 
   // Computed metrics
   const topService = sortedServices[0]
-  const topAccount = sortedAccounts[0]
   const monthHistory = availablePeriods.slice(-6).map(p => ({ month: PERIOD_LABELS[p]?.split(' ')[0] || p, total: byMonth[p] || 0, fullMonth: p }))
   const currentMonthTotal = byMonth[availablePeriods[availablePeriods.length - 1]] || 0
   const prevMonthTotal = availablePeriods.length >= 2 ? (byMonth[availablePeriods[availablePeriods.length - 2]] || 0) : 0

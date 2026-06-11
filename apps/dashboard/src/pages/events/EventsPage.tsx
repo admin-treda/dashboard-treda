@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,7 +28,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Search, Download, Filter, Calendar, ShieldAlert, AlertTriangle, Info, CheckCircle2, User, Clock, X } from 'lucide-react'
+import { Search, Download, Filter, Calendar, ShieldAlert, AlertTriangle, Info, CheckCircle2, User, Clock, X, TrendingUp } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts'
+import { EventHeatmap } from '@/components/charts/EventHeatmap'
 
 const severityConfig: Record<string, { color: string; bg: string; border: string; icon: any; label: string; glow: string }> = {
   CRITICAL: { color: 'text-[#EF4444]', bg: 'bg-[#EF4444]/15', border: 'border-[#EF4444]/30', icon: ShieldAlert, label: 'CRÍTICO', glow: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]' },
@@ -59,6 +61,9 @@ export function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [realTimeEnabled, setRealTimeEnabled] = useState(false)
+  const [newEventAlert, setNewEventAlert] = useState<any>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   const fetchEvents = async () => {
     try {
@@ -88,6 +93,32 @@ export function EventsPage() {
   useEffect(() => {
     fetchEvents()
   }, [severityFilter, providerFilter, dateFrom, dateTo])
+
+  // Real-time SSE for critical events
+  useEffect(() => {
+    if (!realTimeEnabled) {
+      if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null }
+      return
+    }
+    try {
+      const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '')
+      const token = localStorage.getItem('token')
+      const es = new EventSource(`${apiBase}/events/stream?token=${token}`)
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data)
+          if (data.severity === 'CRITICAL' || data.severity === 'HIGH') {
+            setNewEventAlert(data)
+            setTimeout(() => setNewEventAlert(null), 5000)
+          }
+          fetchEvents()
+        } catch {}
+      }
+      es.onerror = () => { es.close(); setRealTimeEnabled(false) }
+      eventSourceRef.current = es
+    } catch { setRealTimeEnabled(false) }
+    return () => { eventSourceRef.current?.close() }
+  }, [realTimeEnabled])
 
   const filtered = useMemo(() => {
     if (!search) return events
@@ -136,15 +167,32 @@ export function EventsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Real-time Alert Banner */}
+      {newEventAlert && (
+        <div className="p-3 rounded-lg border animate-pulse" style={{ backgroundColor: newEventAlert.severity === 'CRITICAL' ? '#FF444415' : '#F59E0B15', borderColor: newEventAlert.severity === 'CRITICAL' ? '#FF444440' : '#F59E0B40' }}>
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4" style={{ color: newEventAlert.severity === 'CRITICAL' ? '#FF4444' : '#F59E0B' }} />
+            <span className="text-sm font-medium">Nuevo evento {newEventAlert.severity === 'CRITICAL' ? 'CRÍTICO' : 'ALTO'}: {newEventAlert.description || newEventAlert.type}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold gradient-animated font-display tracking-wider">// SEGURIDAD</h1>
           <p className="text-sm text-muted-foreground mt-1 font-mono">Monitoreo de eventos de seguridad en tiempo real</p>
           <p className="text-xs text-muted-foreground mt-1">Última actualización: {new Date().toLocaleTimeString('es-CO')} — Recolector cada 20 min</p>
         </div>
-        <Button variant="outline" className="gap-2 border-[#00E5FF]/20 hover:border-[#00E5FF]/50" onClick={exportCSV}>
-          <Download className="h-4 w-4" /> Exportar CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant={realTimeEnabled ? 'default' : 'outline'} size="sm" onClick={() => setRealTimeEnabled(!realTimeEnabled)}
+            className={`gap-2 text-xs ${realTimeEnabled ? 'bg-[#00FF88]/20 text-[#00FF88] border-[#00FF88]/30' : 'border-[#00E5FF]/20'}`}>
+            <span className={`h-2 w-2 rounded-full ${realTimeEnabled ? 'bg-[#00FF88] animate-pulse' : 'bg-muted-foreground'}`} />
+            {realTimeEnabled ? 'Tiempo Real' : 'En vivo'}
+          </Button>
+          <Button variant="outline" className="gap-2 border-[#00E5FF]/20 hover:border-[#00E5FF]/50" onClick={exportCSV}>
+            <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
+        </div>
       </div>
 
       {/* Severity Cards — CLICKABLE FILTERS */}
@@ -173,6 +221,46 @@ export function EventsPage() {
             </Card>
           )
         })}
+      </div>
+
+      {/* Trend Charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Events by Severity Bar Chart */}
+        <Card className="glass-card border-white/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-display text-neon-cyan uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Eventos por Severidad
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <div className="h-40 animate-pulse bg-muted/20 rounded" /> : (
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={[
+                  { name: 'CRÍTICO', value: summary.critical || 0, color: '#FF4444' },
+                  { name: 'ALTO', value: summary.high || 0, color: '#F59E0B' },
+                  { name: 'MEDIO', value: summary.medium || 0, color: '#3B82F6' },
+                  { name: 'BAJO', value: summary.low || 0, color: '#10B981' },
+                ].filter(d => d.value > 0)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} fontFamily="monospace" />
+                  <YAxis stroke="#64748b" fontSize={10} fontFamily="monospace" />
+                  <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontFamily: 'monospace', fontSize: 12 }} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {[
+                      { name: 'CRÍTICO', color: '#FF4444' },
+                      { name: 'ALTO', color: '#F59E0B' },
+                      { name: 'MEDIO', color: '#3B82F6' },
+                      { name: 'BAJO', color: '#10B981' },
+                    ].map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Heatmap */}
+        <EventHeatmap events={events} loading={loading} />
       </div>
 
       <Card className="glass-card border-white/5">

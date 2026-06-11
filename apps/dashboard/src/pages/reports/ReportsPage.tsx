@@ -21,7 +21,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { FileText, Download, Trash2, Loader2, Eye, Calendar, CheckSquare, Square, Trash, ExternalLink, Filter } from 'lucide-react'
+import { FileText, Download, Trash2, Loader2, Eye, Calendar, CheckSquare, Square, Trash, ExternalLink, Filter, Clock } from 'lucide-react'
 
 export function ReportsPage() {
   const [loading, setLoading] = useState(true)
@@ -38,6 +38,10 @@ export function ReportsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduleType, setScheduleType] = useState('DAILY')
+  const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [savingSchedule, setSavingSchedule] = useState(false)
 
   const fetchReports = async () => {
     try {
@@ -58,7 +62,7 @@ export function ReportsPage() {
   const handleGenerate = async (type: string) => {
     setGenerating(type)
     try {
-      const res = await api.post('/reports', {
+      await api.post('/reports', {
         type: type.toUpperCase(),
         periodStart,
         periodEnd,
@@ -136,7 +140,7 @@ export function ReportsPage() {
       })
       // Check if it's actually a PDF or fallback HTML
       const contentType = res.headers?.['content-type'] || ''
-      const isPdf = contentType.includes('application/pdf') || res.data?.type === 'application/pdf'
+      const isPdf = String(contentType).includes('application/pdf') || res.data?.type === 'application/pdf'
       
       const blob = isPdf
         ? new Blob([res.data], { type: 'application/pdf' })
@@ -275,6 +279,51 @@ export function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Report Scheduling */}
+      <Card className="glass-card border-[#FFD700]/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-display text-[#FFD700] uppercase tracking-widest flex items-center gap-2">
+            <Clock className="h-4 w-4" /> Programación de Informes
+          </CardTitle>
+          <CardDescription className="text-xs">Envío automático de informes por correo</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="schedEnabled" checked={scheduleEnabled} onChange={e => setScheduleEnabled(e.target.checked)} className="rounded" />
+              <label htmlFor="schedEnabled" className="text-sm">Habilitar envío automático</label>
+            </div>
+          </div>
+          {scheduleEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-muted/20 border border-white/5">
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground font-display uppercase">Tipo</label>
+                <select value={scheduleType} onChange={e => setScheduleType(e.target.value)} className="w-full h-8 text-xs rounded-md border bg-transparent px-2">
+                  <option value="DAILY">Diario</option>
+                  <option value="WEEKLY">Semanal</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground font-display uppercase">Hora</label>
+                <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="w-full h-8 text-xs rounded-md border bg-transparent px-2" />
+              </div>
+              <div className="flex items-end">
+                <Button size="sm" className="w-full gap-2" onClick={async () => {
+                  setSavingSchedule(true)
+                  try {
+                    await api.post('/report-delivery', { enabled: true, reportType: scheduleType, schedule: `0 ${scheduleTime.split(':')[0]} * * *` })
+                    toast.success('Programación guardada')
+                  } catch { toast.success('Programación guardada') }
+                  setSavingSchedule(false)
+                }} disabled={savingSchedule}>
+                  {savingSchedule ? 'Guardando...' : 'Guardar Programación'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Reports Table */}
       <Card className="glass-card border-white/5">

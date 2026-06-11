@@ -107,9 +107,25 @@ export default async function notificationRoutes(fastify: FastifyInstance): Prom
     if (!channel) return reply.status(404).send({ error: "Channel not found" });
 
     let success = false;
+    const cfg = typeof channel.config === 'string' ? JSON.parse(channel.config) : channel.config;
+
     if (channel.type === "SMTP") {
       success = await sendTestSmtp(channel.config);
-    } else if (channel.type === "TELEGRAM") {
+    } else if (channel.type === "SLACK" || channel.type === "DISCORD") {
+      const webhookUrl = cfg.webhookUrl;
+      if (!webhookUrl) return reply.status(400).send({ error: "Webhook URL required" });
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: '🔔 Test de notificación — Dashboard Treda', content: '🔔 Test de notificación — Dashboard Treda', username: 'Treda Dashboard' }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return { success: true, message: `Test enviado a ${channel.name}` };
+      } catch (err: any) {
+        return reply.status(500).send({ error: `Error sending test: ${err.message}` });
+      }
+    } else if (channel.type === 'TELEGRAM') {
       success = await sendTestTelegram(channel.config);
     }
 
