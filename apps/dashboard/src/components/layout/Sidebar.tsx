@@ -160,8 +160,30 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             </p>
           )}
           
-          {/* Business Unit Selector */}
-          {!collapsed && (
+          {/* Always show Unidades link */}
+          <Link
+            to="/business-units"
+            onClick={onMobileClose}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 group relative',
+              collapsed ? 'justify-center' : '',
+              location.pathname === '/business-units'
+                ? 'bg-neon-cyan/8 text-neon-cyan font-medium'
+                : 'text-text-muted hover:bg-muted/40 hover:text-text-secondary'
+            )}
+          >
+            {location.pathname === '/business-units' && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-neon-cyan rounded-r-full shadow-[0_0_8px_hsl(var(--neon-cyan)/0.4)]" />
+            )}
+            <Building2 className={cn(
+              'h-4 w-4 flex-shrink-0 transition-colors',
+              location.pathname === '/business-units' ? 'text-neon-cyan' : 'text-text-dim group-hover:text-text-secondary'
+            )} />
+            {!collapsed && <span className="truncate">Unidades</span>}
+          </Link>
+          
+          {/* Business Unit Selector - only when NOT on business-units page */}
+          {!collapsed && location.pathname !== '/business-units' && (
             <div className="px-2 mb-2">
               <div className="relative">
                 <button
@@ -213,21 +235,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             </div>
           )}
 
-          {/* collapsed mode: simple icon */}
-          {collapsed && (
-            <Link
-              to="/business-units"
-              onClick={onMobileClose}
-              className={cn(
-                'flex items-center justify-center px-3 py-2 rounded-lg transition-all',
-                location.pathname === '/business-units'
-                  ? 'bg-neon-cyan/8 text-neon-cyan'
-                  : 'text-text-muted hover:bg-muted/40'
-              )}
-            >
-              <Building2 className="h-4 w-4" />
-            </Link>
-          )}
 
           {/* ISO Sub-menu items - only show when a BU is selected */}
           {selectedBU && isoMenuItems.map(({ path, label, icon: Icon }) => {
