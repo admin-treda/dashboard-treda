@@ -6,9 +6,10 @@ const prisma = new PrismaClient()
 export default async function trainingRoutes(fastify: FastifyInstance) {
   // List courses
   fastify.get('/courses', async (request, reply) => {
-    const { category } = request.query as any
+    const { category, businessUnitId } = request.query as any
     const where: any = {}
     if (category) where.category = category
+    if (businessUnitId) where.businessUnitId = businessUnitId
 
     const courses = await prisma.trainingCourse.findMany({
       where,
@@ -42,6 +43,7 @@ export default async function trainingRoutes(fastify: FastifyInstance) {
     const body = request.body as any
     const course = await prisma.trainingCourse.create({
       data: {
+        businessUnitId: body.businessUnitId || null,
         title: body.title,
         description: body.description || '',
         category: body.category,
@@ -115,10 +117,11 @@ export default async function trainingRoutes(fastify: FastifyInstance) {
 
   // List enrollments
   fastify.get('/enrollments', async (request, reply) => {
-    const { userId, status } = request.query as any
+    const { userId, status, businessUnitId } = request.query as any
     const where: any = {}
     if (userId) where.userId = userId
     if (status) where.status = status
+    if (businessUnitId) where.businessUnitId = businessUnitId
 
     const enrollments = await prisma.trainingEnrollment.findMany({
       where,

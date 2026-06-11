@@ -7,12 +7,13 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /documents - Listar todos los documentos con filtros
   fastify.get('/', async (request, reply) => {
     try {
-      const { type, category, status, search } = request.query as any
+      const { type, category, status, search, businessUnitId } = request.query as any
       
       const where: any = {}
       if (type) where.type = type
       if (category) where.category = category
       if (status) where.status = status
+      if (businessUnitId) where.businessUnitId = businessUnitId
       if (search) {
         where.OR = [
           { title: { contains: search, mode: 'insensitive' } },
@@ -82,6 +83,7 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
       
       const document = await prisma.document.create({
         data: {
+          businessUnitId: body.businessUnitId || null,
           title: body.title,
           type: body.type as DocumentType,
           category: body.category as DocumentCategory,

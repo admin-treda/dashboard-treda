@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { NotFoundPage } from '@/pages/not-found/NotFoundPage'
 import { PermissionsProvider } from '@/lib/permissions'
+import { BusinessUnitProvider } from '@/contexts/BusinessUnitContext'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Lazy load pages for code splitting
@@ -77,9 +78,11 @@ function App() {
           element={
             <PrivateRoute>
               <PermissionsProvider>
-                <ErrorBoundary>
-                  <DashboardLayout />
-                </ErrorBoundary>
+                <BusinessUnitProvider>
+                  <ErrorBoundary>
+                    <DashboardLayout />
+                  </ErrorBoundary>
+                </BusinessUnitProvider>
               </PermissionsProvider>
             </PrivateRoute>
           }

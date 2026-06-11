@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BusinessUnitSelector } from '@/components/iso27001/BusinessUnitSelector'
+import { useBusinessUnit } from '@/contexts/BusinessUnitContext'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -71,7 +71,7 @@ const levelColors: Record<string, string> = {
 
 export function RisksPage() {
   const [loading, setLoading] = useState(true)
-  const [selectedBU, setSelectedBU] = useState<string | null>(null)
+  const { selectedBU } = useBusinessUnit()
   const [risks, setRisks] = useState<Risk[]>([])
   const [stats, setStats] = useState<any>({})
   const [search, setSearch] = useState('')
@@ -204,7 +204,7 @@ export function RisksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <BusinessUnitSelector selectedId={selectedBU} onSelect={setSelectedBU} />
+
           <div>
             <h1 className="text-2xl font-bold gradient-animated">Gestión de Riesgos</h1>
             <p className="text-sm text-muted-foreground mt-1">ISO 27001 - Evaluación y tratamiento de riesgos</p>

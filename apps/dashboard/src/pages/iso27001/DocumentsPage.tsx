@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BusinessUnitSelector } from '@/components/iso27001/BusinessUnitSelector'
+import { useBusinessUnit } from '@/contexts/BusinessUnitContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -114,7 +114,7 @@ export function DocumentsPage() {
   const [stats, setStats] = useState<DocumentStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedBU, setSelectedBU] = useState<string | null>(null)
+  const { selectedBU } = useBusinessUnit()
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
@@ -287,7 +287,7 @@ export function DocumentsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <BusinessUnitSelector selectedId={selectedBU} onSelect={setSelectedBU} />
+
           {documents.length === 0 && (
             <Button onClick={handleSeed} variant="outline">
               <FileText className="w-4 h-4 mr-2" />

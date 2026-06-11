@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BusinessUnitSelector } from '@/components/iso27001/BusinessUnitSelector'
+import { useBusinessUnit } from '@/contexts/BusinessUnitContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +36,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 export function AuditProgramPage() {
   const [loading, setLoading] = useState(true)
-  const [selectedBU, setSelectedBU] = useState<string | null>(null)
+  const { selectedBU } = useBusinessUnit()
   const [audits, setAudits] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -99,7 +99,7 @@ export function AuditProgramPage() {
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <BusinessUnitSelector selectedId={selectedBU} onSelect={setSelectedBU} />
+
           <div>
             <h1 className="text-2xl font-bold gradient-animated">Programa de Auditorías Internas</h1>
             <p className="text-sm text-muted-foreground mt-1">ISO 27001 — Cláusula 9.2</p>

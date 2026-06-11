@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BusinessUnitSelector } from '@/components/iso27001/BusinessUnitSelector'
+import { useBusinessUnit } from '@/contexts/BusinessUnitContext'
 import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,7 +28,7 @@ interface ISMSData {
 
 export function ISMSDashboardPage() {
   const [loading, setLoading] = useState(true)
-  const [selectedBU, setSelectedBU] = useState<string | null>(null)
+  const { selectedBU } = useBusinessUnit()
   const [isms, setIsms] = useState<ISMSData | null>(null)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState<ISMSData>({
@@ -108,7 +108,6 @@ export function ISMSDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <BusinessUnitSelector selectedId={selectedBU} onSelect={setSelectedBU} />
           <div>
             <h1 className="text-2xl font-bold gradient-animated">Sistema de Gestión de Seguridad</h1>
             <p className="text-sm text-muted-foreground mt-1">ISO 27001:2022 - SGSI Central</p>

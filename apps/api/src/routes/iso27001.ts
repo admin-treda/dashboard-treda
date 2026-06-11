@@ -83,11 +83,12 @@ export async function iso27001Routes(fastify: FastifyInstance) {
 
   fastify.get('/risks', { preHandler: [authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { status, category, level } = request.query as any
+      const { status, category, level, businessUnitId } = request.query as any
       const where: any = {}
       if (status) where.status = status
       if (category) where.category = category
       if (level) where.riskLevel = level
+      if (businessUnitId) where.businessUnitId = businessUnitId
 
       const risks = await prisma.risk.findMany({
         where,
@@ -209,10 +210,11 @@ export async function iso27001Routes(fastify: FastifyInstance) {
 
   fastify.get('/soa', { preHandler: [authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { category, status } = request.query as any
+      const { category, status, businessUnitId } = request.query as any
       const where: any = {}
       if (category) where.category = category
       if (status) where.implementationStatus = status
+      if (businessUnitId) where.businessUnitId = businessUnitId
 
       const controls = await prisma.soAControl.findMany({
         where,
